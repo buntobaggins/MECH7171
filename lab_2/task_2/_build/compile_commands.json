@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/MECH7171_LABS/lab_2/task_2/_build",
+  "command": "C:\\PROGRA~1\\MIB055~1\\2022\\COMMUN~1\\VC\\Tools\\MSVC\\1441~1.341\\bin\\Hostx86\\x64\\cl.exe  /nologo -IC:\\MECH7171_LABS\\lab_2\\task_2\\src /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /std:c17 /Zi /Wall /EHsc /FoCMakeFiles\\lab2_task2.dir\\src\\lab2_task2.c.obj /FdCMakeFiles\\lab2_task2.dir\\ /FS -c C:\\MECH7171_LABS\\lab_2\\task_2\\src\\lab2_task2.c",
+  "file": "C:\\MECH7171_LABS\\lab_2\\task_2\\src\\lab2_task2.c",
+  "output": "CMakeFiles\\lab2_task2.dir\\src\\lab2_task2.c.obj"
+}
+]
