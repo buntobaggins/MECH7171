@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		 {
+			  "label": "build-debug",
+			  "type": "shell",
+			  "command": "cmd.exe /C 'C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/VsDevCmd.bat' '&&' cmake --build ${workspaceFolder}/_build --config Debug",
+			  "args": [],
+			  "dependsOn": "configure-debug",
+			  "group": {
+					"kind": "build",
+					"isDefault": true
+			  },
+			  "problemMatcher": []
+		 },
+		 {
+			  "label": "build-release",
+			  "type": "shell",
+			  "command": "cmd.exe /C 'C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/VsDevCmd.bat' '&&' cmake --build ${workspaceFolder}/_build --config Release",
+			  "args": [],
+			  "dependsOn": "configure-release",
+			  "group": {
+					"kind": "build",
+					"isDefault": false
+			  },
+			  "problemMatcher": []
+		 },
+		 {
+			  "label": "configure-debug",
+			  "type": "process",
+			  "command": "powershell",
+			  "args": [
+					"-ExecutionPolicy",
+					"Bypass",
+					"-Command",
+					"if (Test-Path \"${workspaceFolder}\\_build\\_debug\") { exit 0 } else { & \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools\\Launch-VsDevShell.ps1\"; cmake -S \"${workspaceFolder}\" -B \"${workspaceFolder}/_build\" -G Ninja -DCMAKE_BUILD_TYPE=Debug }"
+			  ],
+			  "problemMatcher": []
+		 },
+		 {
+			  "label": "configure-release",
+			  "type": "process",
+			  "command": "powershell",
+			  "args": [
+					"-ExecutionPolicy",
+					"Bypass",
+					"-Command",
+					"if (Test-Path \"${workspaceFolder}\\_build\\_release\") { exit 0 } else { & \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools\\Launch-VsDevShell.ps1\"; cmake -S \"${workspaceFolder}\" -B \"${workspaceFolder}/_build\" -G Ninja -DCMAKE_BUILD_TYPE=Release }"
+			  ],
+			  "problemMatcher": []
+		 }
+	]
+}

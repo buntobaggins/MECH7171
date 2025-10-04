@@ -1,0 +1,24 @@
+{
+    "update.mode"                            : "none",
+    "editor.tabSize"                         : 3,
+    "editor.useTabStops"                     : false,
+    "editor.insertSpaces"                    : true,
+    "editor.renderWhitespace"                : "all",
+    "files.trimTrailingWhitespace"           : true,
+
+    "C_Cpp.default.configurationProvider"    : "ms-vscode.cmake-tools",
+    "files.associations": {
+      "*.tcc"                                : "cpp",
+      "*.ipp"                                : "cpp"
+    },
+    "cmake.configureOnEdit"                  : true,
+    "cmake.configureOnOpen"                  : true,
+    "cmake.automaticReconfigure"             : true,
+    "cmake.deleteBuildDirOnCleanConfigure"   : true,
+    "cmake.enableAutomaticKitScan"           : true,
+    "cmake.useVsDeveloperEnvironment"        : "auto",
+    "cmake.generator"                        : "Ninja",
+    "cmake.buildDirectory"                   : "${workspaceFolder}/_build",
+    "cmake.launchBehavior"                   : "breakAndReuseTerminal",
+    "cmake.debugConfig"                      : {"console": "integratedTerminal"}
+  }

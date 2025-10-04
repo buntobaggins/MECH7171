@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+			{
+			"label": "build-debug",
+			"type": "cmake",
+			"command": "build",
+			"targets": ["all"],
+			"group": {
+			  "kind": "build",
+			  "isDefault": true
+			},
+			"problemMatcher": [],
+			"detail": "Build using CMake Tools extension"
+
+		 }
+
+	]
+}

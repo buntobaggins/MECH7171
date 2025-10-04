@@ -1,0 +1,13 @@
+{
+    "editor.tabSize": 3,
+    "editor.useTabStops": false,
+    "editor.insertSpaces": true,
+    "editor.renderWhitespace": "all",
+    "files.trimTrailingWhitespace": true,
+
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "files.associations": {
+      "*.tcc": "cpp",
+      "*.ipp": "cpp"
+    }
+  }
