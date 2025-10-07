@@ -45,7 +45,7 @@ const double L2 = 250.0;                  // length of the outer arm
 const double ABS_THETA1_DEG_MAX = 150.0;  // maximum magnitude of shoulder angle in degrees
 const double ABS_THETA2_DEG_MAX = 170.0;  // maximum magnitude of elbow angle in degrees
 
-// can't use const doubles for L_MAX and L_MIN because global const variables require 
+// can't use const doubles for L_MAX and L_MIN because global const variables require
 // constant expressions, i.e., something without a memory address
 #define LMAX (L1 + L2) // max L -> maximum reach of robot
 #define LMIN (L1 - L2) // min L -> minimum reach of robot (no angle restrictions)
@@ -54,8 +54,10 @@ const int PRECISION = 2;      // for printing x,y,L values to console
 const int FIELD_WIDTH = 7;    // for printing values to console
 
 const int TOOLTIP_COORDINATES_COLUMN_WIDTH = 51;  // value includes left/right borders!!!!
+#define TOOLTIP_COORDINATES_COLUMN_WIDTH 51
 const int JOINT_ANGLES_COLUMN_WIDTH = 88;         // value includes left/right borders!!!!
-const int LEFT_MARGIN = 2;  // all tables have left margin which is number of spaces between 
+#define JOINT_ANGLES_COLUMN_WIDTH 88
+const int LEFT_MARGIN = 2;  // all tables have left margin which is number of spaces between
                             // left border and the first character printed in a table row
 
 // Table header strings
@@ -88,8 +90,8 @@ double mapAngle(double ang);     // input an angle (radians) and map into range 
 void printGuide(int length);     // prints column guide
 
 //-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  C program to ask the user for a tooltip coordinate (x,y) and analyze the associated 
-//               joint angles. The tooltip coordinates and the joint angle analysis data will be printed in 
+// DESCRIPTION:  C program to ask the user for a tooltip coordinate (x,y) and analyze the associated
+//               joint angles. The tooltip coordinates and the joint angle analysis data will be printed in
 //               separate formatted tables.
 // ARGUMENTS:    none
 // RETURN VALUE: an int that tells the O/S how the program ended.  0 = EXIT_SUCCESS = normal termination
@@ -115,9 +117,29 @@ int main()
    introduction();  // print the program introduction
 
    //============== get the tooltip x,y values.  Don't stop asking until have good, clean data ==============
+
    while(true)
    {
-      break;
+      printf("Enter the tooltip coordinates x,y (comma seperated): ");
+      iret=scanf_s("%lf,%lf",&x,&y);
+      bHasGarbage=flushInputBuffer();
+      if (iret == 2){
+         if(bHasGarbage){
+            printf("Got x and y values (%.*lf, %.*lf) but y value contains trailing non-numerical characters\n",PRECISION,x,PRECISION,y);
+         } else {
+            printf("Got good x and y values (%.*lf, %.*lf). Thanks!!\n",PRECISION,x,PRECISION,y);
+            break;
+         }
+      } else if (iret == 1) {
+         if(bHasGarbage){
+            printf("Only got x value (%.*lf)!\n",PRECISION,x);
+            printf("x may have trailing garbage or y may have leading garbage or you forgot the comma.\n");
+         } else {
+            printf("to few arguments!\n");
+         }
+      } else {
+         printf("Didnt get any usable data. x values contains leading non-numerical characters\n");
+      }
    }
 
 
@@ -129,17 +151,179 @@ int main()
    waitForEnterKey();
    system("cls");
 
+   L = sqrt((x*x) + (y*y));
+
+   beta = atan2(y,x);
+   alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
+   theta1L = beta + alpha;
+   theta1R = beta - alpha;
+
+   theta2L = atan2(y-L1*sin(theta1L),x-L1*cos(theta1L))-theta1L;
+   theta2R = atan2(y-L1*sin(theta1R),x-L1*cos(theta1R))-theta1R;
+
+   theta1Ldeg = radToDeg(mapAngle(theta1L));
+   theta1Rdeg = radToDeg(mapAngle(theta1R));
+   theta2Ldeg = radToDeg(mapAngle(theta2L));
+   theta2Rdeg = radToDeg(mapAngle(theta2R));
+
    //========================= Print Input Data =========================
    printGuide(TOOLTIP_COORDINATES_COLUMN_WIDTH);
+   for(i=1;i<=TOOLTIP_COORDINATES_COLUMN_WIDTH;i++){
+   switch (i)
+      {
+      case 1:
+         printf("%c",TL);
+         break;
+      case TOOLTIP_COORDINATES_COLUMN_WIDTH:
+         printf("%c\n",TR);
+         break;
+      default:
+         printf("%c",HL);
+         break;
+      }
+   }
 
+   printf("%c",VL);
+   printf("%*s",((TOOLTIP_COORDINATES_COLUMN_WIDTH-1-tooltipCoordinateHeaderLength)/2)+tooltipCoordinateHeaderLength, strTooltipCoordinateHeader);
+   printf("%*c\n",((TOOLTIP_COORDINATES_COLUMN_WIDTH-tooltipCoordinateHeaderLength)/2),VL);
 
+   for(i=1;i<=TOOLTIP_COORDINATES_COLUMN_WIDTH;i++){
+      switch (i)
+      {
+      case 1:
+         printf("%c",CL);
+         break;
+      case TOOLTIP_COORDINATES_COLUMN_WIDTH:
+         printf("%c\n",CR);
+         break;
+      default:
+         printf("%c",HL);
+         break;
+      }
+   }
+
+   numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+   numChars += printf("x,y = %+*.*lf, %+*.*lf  [mm]",FIELD_WIDTH,PRECISION,x,FIELD_WIDTH,PRECISION,y);
+   printf("%*c\n",TOOLTIP_COORDINATES_COLUMN_WIDTH-numChars,VL);
+
+   for(i=1;i<=TOOLTIP_COORDINATES_COLUMN_WIDTH;i++){
+            switch (i)
+            {
+            case 1:
+               printf("%c",BL);
+               break;
+            case TOOLTIP_COORDINATES_COLUMN_WIDTH:
+               printf("%c\n",BR);
+               break;
+            default:
+               printf("%c",HL);
+               break;
+            }
+         }
 
 
 
    //========================= Print Joint Angles Analysis Data =========================
    printGuide(JOINT_ANGLES_COLUMN_WIDTH);
 
+      for(i=1;i<=JOINT_ANGLES_COLUMN_WIDTH;i++){
+   switch (i)
+      {
+      case 1:
+         printf("%c",TL);
+         break;
+      case JOINT_ANGLES_COLUMN_WIDTH:
+         printf("%c\n",TR);
+         break;
+      default:
+         printf("%c",HL);
+         break;
+      }
+   }
 
+   printf("%c",VL);
+   printf("%*s",((JOINT_ANGLES_COLUMN_WIDTH-1-jointAnglesHeaderLength)/2)+jointAnglesHeaderLength, strJointAnglesHeader);
+   printf("%*c\n",((JOINT_ANGLES_COLUMN_WIDTH-jointAnglesHeaderLength)/2),VL);
+
+   for(i=1;i<=JOINT_ANGLES_COLUMN_WIDTH;i++){
+      switch (i)
+      {
+      case 1:
+         printf("%c",CL);
+         break;
+      case JOINT_ANGLES_COLUMN_WIDTH:
+         printf("%c\n",CR);
+         break;
+      default:
+         printf("%c",HL);
+         break;
+      }
+   }
+
+      numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+      numChars += printf("L = %+*.*lf",FIELD_WIDTH,PRECISION,L);
+      printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+      numChars = 0;
+
+      numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+
+      if (L<LMIN){
+         bWithinLLimits = false;
+         numChars+=printf("!!!!! POINT IS INSIDE MINIMUM REACH OF THE ROBOT (L = %.*lf [mm]) !!!!!",PRECISION,LMIN);
+      } else if (L>LMAX){
+         bWithinLLimits = false;
+         numChars+=printf("!!!!! POINT IS OUTSIDE MAXIMUM REACH OF THE ROBOT (L = %.*lf [mm]) !!!!!",PRECISION,LMAX);
+      } else {
+         bWithinLLimits = true;
+         numChars+=printf("Left Arm Shoulder Angle  ");
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta1Ldeg);
+         if (fabs(theta1Ldeg) > ABS_THETA1_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA1_DEG_MAX,DEGREE_SYMBOL);
+         }
+      }
+
+      printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+
+      if(bWithinLLimits){
+         numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+         numChars+=printf("Left Arm Elbow Angle     ");
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta2Ldeg);
+         if (fabs(theta2Ldeg) > ABS_THETA2_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA2_DEG_MAX,DEGREE_SYMBOL);
+         }
+         printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+
+         numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+         numChars+=printf("Right Arm Shoulder Angle ");
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta1Rdeg);
+         if (fabs(theta1Rdeg) > ABS_THETA1_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA1_DEG_MAX,DEGREE_SYMBOL);
+         }
+         printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+
+         numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+         numChars+=printf("Right Arm Elbow Angle    ");
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta2Rdeg);
+         if (fabs(theta2Rdeg) > ABS_THETA2_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA2_DEG_MAX,DEGREE_SYMBOL);
+         }
+         printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+      }
+
+   for(i=1;i<=JOINT_ANGLES_COLUMN_WIDTH;i++){
+            switch (i)
+            {
+            case 1:
+               printf("%c",BL);
+               break;
+            case JOINT_ANGLES_COLUMN_WIDTH:
+               printf("%c\n",BR);
+               break;
+            default:
+               printf("%c",HL);
+               break;
+            }
+         }
 
 
    printf("\nPress ENTER to end the program...\n");
@@ -238,13 +422,31 @@ void introduction()
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  prints column guide in the form:
-// 
+//
 //          1         2         3         4         5         6         7
 // 1234567890123456789012345678901234567890123456789012345678901234567890
-// 
+//
 // ARGUMENTS:    the length of the column guide in characters
 // RETURN VALUE: none
 void printGuide(int length)
 {
+   int i;
+
+   for(i=1;i<length;i++){
+      if(i>=100 && i%10 == 0){
+         printf("%d",i/100);
+      } else{printf(" ");}
+   }
+   printf("\n");
+   for(i=1;i<length;i++){
+      if(i>=10 && i%10 == 0){
+         printf("%d",(i/10)%10);
+      } else{printf(" ");}
+   }
+   printf("\n");
+   for(i=1;i<=length;i++){
+      printf("%d",i%10);
+   }
+   printf("\n");
 }
 
