@@ -9,17 +9,11 @@ Purpose: Modify the Lab1 Task1 program to compute the coordinates and coorespond
          C programming techniques will include variables, keyboard input (scanf_s),
          formatted output (printf), branches, and loops.
 
-<<<<<<< HEAD
-Author(s): Walker Golembioski Set A (include each of your sets)
-
-Declaration: I, Walker Golembioski, declare that the following program was written by me.
-=======
-Author(s): Walker Golembioski (include each of your sets)
+Author(s): Walker Golembioski Set A(include each of your sets)
 
 Declaration: I, Walker Golebembioski, declare that the following program was written by me.
->>>>>>> main
 
-Date Created: September 28 2024
+Date Created: September 28 2025
 
 ************************************************************************************************************/
 
@@ -113,15 +107,17 @@ int main()
    int tooltipCoordinateHeaderLength = (int)strlen(strTooltipCoordinateHeader);
    int jointAnglesHeaderLength = (int)strlen(strJointAnglesHeader);
 
+   introduction();
+
    //---------- get the line endpoint coordinates.  Don't stop asking until have good, clean data
    while(true)
    {
-      printf("Please enter your two sets of cordinates and the number of point (xA yA xB yB) \n");
-      iret = scanf_s("%lf %lf %lf %lf",&xA,&yA,&xB,&yB);
+      printf("Enter the line end point coordinates xA,yA,xB,yB (comma seperated): ");
+      iret = scanf_s("%lf,%lf,%lf,%lf",&xA,&yA,&xB,&yB);
       bHasGarbage = flushInputBuffer();
       if (iret == 4)
       {
-         printf("%lf %lf %lf %lf \n",xA,yA,xB,yB);
+         printf("Got good end point values: xA, yA = [%.0lf,%.0lf] and xB, yB = [%.0lf,%.0lf].\n",xA,yA,xB,yB);
          break;
       } else {
          printf("Invalid input. Please try again. \n");
@@ -131,12 +127,12 @@ int main()
    //---------- get NP
    while(true)
    {
-      printf("Please enter the number of points (NP) \n");
+      printf("Enter the number of points on the line, NP: ");
       iret = scanf_s("%d",&NP);
       bHasGarbage = flushInputBuffer();
       if (bHasGarbage == 0 && NP >= 2)
       {
-         printf("%d \n",NP);
+         printf("Got good value: NP = %d.\n",NP);
          break;
       } else {
          printf("Invalid input. Please try again. \n");
@@ -200,7 +196,7 @@ int main()
       L = sqrt((x*x) + (y*y));
 
       beta = atan2(y,x);
-      alpha = acos((L2*L2)-(L*L)-(L1*L1)/(-2*L*L1));
+      alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
 
       theta1L = beta + alpha;
       theta1R = beta - alpha;
@@ -217,17 +213,17 @@ int main()
       numChars += printf("x,y = %+*.*lf, %+*.*lf",FIELD_WIDTH,PRECISION,x,FIELD_WIDTH,PRECISION,y);
       printf("%*c",TOOLTIP_COORDINATES_COLUMN_WIDTH-numChars,VL);
       if (L<LMIN){
-         bWithinLLimits == false;
+         bWithinLLimits = false;
          numChars=printf("%*c!!!!! POINT IS INSIDE MINIMUM REACH OF THE ROBOT (L = %.*lf [mm]) !!!!!",LEFT_MARGIN,32,PRECISION,LMIN);
       } else if (L>LMAX){
-         bWithinLLimits == false;
+         bWithinLLimits = false;
          numChars=printf("%*c!!!!! POINT IS OUTSIDE MAXIMUM REACH OF THE ROBOT (L = %.*lf [mm]) !!!!!",LEFT_MARGIN,32,PRECISION,LMAX);
       } else {
-         bWithinLLimits == true;
+         bWithinLLimits = true;
          numChars=printf("%*cLeft Arm Shoulder Angle  ",LEFT_MARGIN,32);
          numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta1Ldeg);
-         if (theta1L > ABS_THETA1_DEG_MAX){
-            numChars+=printf("    *** MAXIMUM ANGLE (%c%lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,ABS_THETA1_DEG_MAX,DEGREE_SYMBOL);
+         if (fabs(theta1Ldeg) > ABS_THETA1_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA1_DEG_MAX,DEGREE_SYMBOL);
          }
       }
 
@@ -236,16 +232,37 @@ int main()
       numChars = printf("%-*c",LEFT_MARGIN+1,VL);
       numChars += printf("  L = %+*.*lf",FIELD_WIDTH,PRECISION,L);
       printf("%*c",TOOLTIP_COORDINATES_COLUMN_WIDTH-numChars,VL);
+      numChars = 0;
 
-      if(bWithinLLimits==true){
-         numChars=printf("%*cLeft Arm Elbow Angle  ",LEFT_MARGIN,32);
+      if(bWithinLLimits){
+         numChars=printf("%*cLeft Arm Elbow Angle     ",LEFT_MARGIN,32);
          numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta2Ldeg);
-         if (theta2L > ABS_THETA2_DEG_MAX){
-            numChars+=printf("    *** MAXIMUM ANGLE (%c%lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,ABS_THETA2_DEG_MAX,DEGREE_SYMBOL);
+         if (fabs(theta2Ldeg) > ABS_THETA2_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA2_DEG_MAX,DEGREE_SYMBOL);
          }
       }
 
-      printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH,VL);
+      printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+
+      if(bWithinLLimits){
+         numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+         printf("%*c",TOOLTIP_COORDINATES_COLUMN_WIDTH-numChars,VL);
+         numChars=printf("%*cRight Arm Shoulder Angle ",LEFT_MARGIN,32);
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta1Rdeg);
+         if (fabs(theta1Rdeg) > ABS_THETA1_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA1_DEG_MAX,DEGREE_SYMBOL);
+         }
+         printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+
+         numChars = printf("%-*c",LEFT_MARGIN+1,VL);
+         printf("%*c",TOOLTIP_COORDINATES_COLUMN_WIDTH-numChars,VL);
+         numChars=printf("%*cRight Arm Elbow Angle    ",LEFT_MARGIN,32);
+         numChars+=printf("= %+*.*lf",FIELD_WIDTH,PRECISION,theta2Rdeg);
+         if (fabs(theta2Rdeg) > ABS_THETA2_DEG_MAX){
+            numChars+=printf("    *** MAXIMUM ANGLE (%c%.*lf%c) EXCEEDED! ***    ",PLUSMINUS_SYMBOL,PRECISION,ABS_THETA2_DEG_MAX,DEGREE_SYMBOL);
+         }
+         printf("%*c\n",JOINT_ANGLES_COLUMN_WIDTH-numChars,VL);
+      }
 
       if (i == NP) {
          for(n=1;n<=TOOLTIP_COORDINATES_COLUMN_WIDTH+JOINT_ANGLES_COLUMN_WIDTH;n++){
