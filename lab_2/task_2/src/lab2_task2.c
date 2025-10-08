@@ -9,9 +9,15 @@ Purpose: Modify the Lab1 Task1 program to compute the coordinates and coorespond
          C programming techniques will include variables, keyboard input (scanf_s),
          formatted output (printf), branches, and loops.
 
+<<<<<<< HEAD
 Author(s): Walker Golembioski Set A (include each of your sets)
 
 Declaration: I, Walker Golembioski, declare that the following program was written by me.
+=======
+Author(s): Walker Golembioski (include each of your sets)
+
+Declaration: I, Walker Golebembioski, declare that the following program was written by me.
+>>>>>>> main
 
 Date Created: September 28 2024
 
