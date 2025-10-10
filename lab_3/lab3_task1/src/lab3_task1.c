@@ -96,6 +96,9 @@ void rotateRobotJoints(double theta1Deg, double theta2Deg); // rotates robot arm
 double mapAndConvertAngle(double theta); // maps angle in radians into degrees in the range -180 to +180
 bool doAgain(void); // asks the user if they want do draw another line
 void printHeader(int tableWidth, const char *strHeaderTitle);  // prints a table header
+void printInputData(double xA,double yA,double xB,double yB,int NP);  // prints some stuff I guess
+void printRowBorder(int length, int style); // Print the border between rows for a given length, style 1 top of table, style 2 middle, style 3 bottom
+void printPointData(double x,double y,int i);
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw straight lines with the SCARA robot
@@ -127,11 +130,35 @@ int main(void)
       //===================================  Get the input data (inline) ===================================
 
       // line endpoint data (xA,yA,xB,yB)
-
+      while(true)
+         {
+            printf("Enter the line end point coordinates xA,yA,xB,yB (comma seperated): ");
+            iret = scanf_s("%lf,%lf,%lf,%lf",&xA,&yA,&xB,&yB);
+            bHasGarbage = flushInputBuffer();
+            if (iret == 4)
+            {
+               printf("Got good end point values: xA, yA = [%.0lf,%.0lf] and xB, yB = [%.0lf,%.0lf].\n",xA,yA,xB,yB);
+               break;
+            } else {
+               printf("Invalid input. Please try again. \n");
+            }
+         }
 
 
       // number of points on the line (NP)
-
+      while(true)
+         {
+            printf("Enter the number of points on the line, NP: ");
+            iret = scanf_s("%d",&NP);
+            bHasGarbage = flushInputBuffer();
+            if (bHasGarbage == 0 && NP >= 2)
+            {
+               printf("Got good value: NP = %d.\n",NP);
+               break;
+            } else {
+               printf("Invalid input. Please try again. \n");
+            }
+         }
 
 
       printf("\nPress ENTER to clear the screen and print all input/output data...");
@@ -140,8 +167,10 @@ int main(void)
 
 
       //==============================  Print the input data table (function) ==============================
-
-
+      printInputData(xA,yA,xB,yB,NP);
+      printRowBorder(OUTPUTS_TABLE_WIDTH,1);
+      printHeader(OUTPUTS_TABLE_WIDTH,strLinePointsTableHeader);
+      printRowBorder(OUTPUTS_TABLE_WIDTH,2);
 
 
       //============= Generate the line points and move the robot to each reachable point.     =============
@@ -304,4 +333,89 @@ void setPenPos(int penPos)
 // RETURN VALUE: none
 void printHeader(int tableWidth, const char *strHeaderTitle)
 {
+   int numChars;
+   int length = strlen(strHeaderTitle);
+   numChars=printf("%c",VL);
+   numChars+=printf("%*s",((tableWidth-2-length)/2)+length,strHeaderTitle);
+   printf("%*c\n",tableWidth-numChars,VL);
+}
+
+void printInputData(double xA,double yA,double xB,double yB,int NP)
+{
+   int numChars;
+   printRowBorder(INPUTS_TABLE_WIDTH,1);
+   printHeader(INPUTS_TABLE_WIDTH,strInputsTableHeader);
+   printRowBorder(INPUTS_TABLE_WIDTH,2);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("Start Point: x,y = [%+*.*lf, %+*.*lf]",FIELD_WIDTH,PRECISION,xA,FIELD_WIDTH,PRECISION,yA);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("End Point:   x,y = [%+*.*lf, %+*.*lf]",FIELD_WIDTH,PRECISION,xB,FIELD_WIDTH,PRECISION,yB);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("NP = %d",NP);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   printRowBorder(INPUTS_TABLE_WIDTH,3);
+}
+
+void printRowBorder(int length, int style)
+{
+   int i;
+   switch (style)
+   {
+   case 1:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",TL);
+         } else if (i == length){
+            printf("%c\n",TR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+   case 2:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",CL);
+         } else if (i == length){
+            printf("%c\n",CR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+   case 3:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",BL);
+         } else if (i == length){
+            printf("%c\n",BR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+
+   default:
+      break;
+   }
+}
+void printPointData(double x,double y,int i){
+
+   double L = sqrt((x*x) + (y*y));
+
+   double beta = atan2(y,x);
+   double alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
+
+   double theta1L = beta + alpha;
+   double theta1R = beta - alpha;
+
+   double theta2L = atan2(y-L1*sin(theta1L),x-L1*cos(theta1L))-theta1L;
+   double theta2R = atan2(y-L1*sin(theta1R),x-L1*cos(theta1R))-theta1R;
+
+   double theta1Ldeg = mapAndConvertAngle(theta1L);
+   double theta1Rdeg = mapAndConvertAngle(theta2L);
+   double theta2Ldeg = mapAndConvertAngle(theta1R);
+   double theta2Rdeg = mapAndConvertAngle(theta2R);
 }
