@@ -60,7 +60,7 @@ const unsigned char BR = 217;  // bottom right border symbol
 
 const unsigned char DEGREE_SYMBOL = 248;  // the degree symbol
 const unsigned char THETA_SYMBOL = 233;   // theta symbol
-const unsigned char ERROR_SYMBOL = 4;     // left  pointing black arrowhead symbol
+const unsigned char ERROR_SYMBOL = 219;     // left  pointing black arrowhead symbol
 const int NUM_ERROR_SYMBOLS = 5;          // number of leading/trailing error symbols to print
 
 // constants to indicate reach errors
@@ -98,7 +98,7 @@ bool doAgain(void); // asks the user if they want do draw another line
 void printHeader(int tableWidth, const char *strHeaderTitle);  // prints a table header
 void printInputData(double xA,double yA,double xB,double yB,int NP);  // prints some stuff I guess
 void printRowBorder(int length, int style); // Print the border between rows for a given length, style 1 top of table, style 2 middle, style 3 bottom
-void printPointData(double x,double y,int i);
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L);
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw straight lines with the SCARA robot
@@ -167,11 +167,36 @@ int main(void)
 
 
       //==============================  Print the input data table (function) ==============================
-      printInputData(xA,yA,xB,yB,NP);
-      printRowBorder(OUTPUTS_TABLE_WIDTH,1);
-      printHeader(OUTPUTS_TABLE_WIDTH,strLinePointsTableHeader);
-      printRowBorder(OUTPUTS_TABLE_WIDTH,2);
+         printInputData(xA,yA,xB,yB,NP);
+         printRowBorder(OUTPUTS_TABLE_WIDTH,1);
+         printHeader(OUTPUTS_TABLE_WIDTH,strLinePointsTableHeader);
+         printRowBorder(OUTPUTS_TABLE_WIDTH,2);
 
+      for(iPoint=1;iPoint<=NP;iPoint++){
+         t = (iPoint-1.0)/(NP-1);
+         x = ((1 - t)*xA) + (xB*t);
+         y = ((1 - t)*yA) + (yB*t);
+         L = sqrt((x*x) + (y*y));
+
+         beta = atan2(y,x);
+         alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
+
+         theta1 = beta + alpha;
+         theta1Ldeg = mapAndConvertAngle(theta1);
+         theta2Ldeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+
+         theta1 = beta - alpha;
+         theta1Rdeg = mapAndConvertAngle(theta1);
+         theta2Rdeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+
+
+         printPointData(x,y,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint,L);
+         if(iPoint==NP){
+            printRowBorder(OUTPUTS_TABLE_WIDTH,3);
+         } else {
+            printRowBorder(OUTPUTS_TABLE_WIDTH,2);
+         }
+      }
 
       //============= Generate the line points and move the robot to each reachable point.     =============
       //============= If the point is reachable, move to it with the pen down.  If it is not,  =============
@@ -401,21 +426,52 @@ void printRowBorder(int length, int style)
       break;
    }
 }
-void printPointData(double x,double y,int i){
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L){
+   int numChars;
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("POINT %02d:",i);
+   numChars+=printf("   x = %+*.*lf,",FIELD_WIDTH,PRECISION,x);
+   numChars+=printf("   y = %+*.*lf.",FIELD_WIDTH,PRECISION,y);
+   numChars+=printf("   L = %+*.*lf",FIELD_WIDTH,PRECISION,L);
+   printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
 
-   double L = sqrt((x*x) + (y*y));
+   if(L>LMAX){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS OUTSIDE MAXIMUM REACH OF ROBOT (L_MAX = %.0lf) ",LMAX);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else if(L<LMIN){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS INSIDE MINIMUM REACH OF ROBOT (L_MIN = %.0lf) ",LMIN);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else{
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("LEFT ARM:");
+      numChars+=printf("  %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Ldeg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Ldeg,DEGREE_SYMBOL);
+      if(fabs(theta1Ldeg)>ABS_THETA1_DEG_MAX && fabs(theta2Ldeg)>ABS_THETA2_DEG_MAX){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if(fabs(theta1Ldeg)>ABS_THETA1_DEG_MAX){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if(fabs(theta2Ldeg)>ABS_THETA2_DEG_MAX){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
 
-   double beta = atan2(y,x);
-   double alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
-
-   double theta1L = beta + alpha;
-   double theta1R = beta - alpha;
-
-   double theta2L = atan2(y-L1*sin(theta1L),x-L1*cos(theta1L))-theta1L;
-   double theta2R = atan2(y-L1*sin(theta1R),x-L1*cos(theta1R))-theta1R;
-
-   double theta1Ldeg = mapAndConvertAngle(theta1L);
-   double theta1Rdeg = mapAndConvertAngle(theta2L);
-   double theta2Ldeg = mapAndConvertAngle(theta1R);
-   double theta2Rdeg = mapAndConvertAngle(theta2R);
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("RIGHT ARM:");
+      numChars+=printf(" %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Rdeg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Rdeg,DEGREE_SYMBOL);
+      if(fabs(theta1Rdeg)>ABS_THETA1_DEG_MAX && fabs(theta2Rdeg)>ABS_THETA2_DEG_MAX){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if(fabs(theta1Rdeg)>ABS_THETA1_DEG_MAX){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if(fabs(theta2Rdeg)>ABS_THETA2_DEG_MAX){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
+   }
 }
