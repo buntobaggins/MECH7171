@@ -98,7 +98,8 @@ bool doAgain(void); // asks the user if they want do draw another line
 void printHeader(int tableWidth, const char *strHeaderTitle);  // prints a table header
 void printInputData(double xA,double yA,double xB,double yB,int NP);  // prints some stuff I guess
 void printRowBorder(int length, int style); // Print the border between rows for a given length, style 1 top of table, style 2 middle, style 3 bottom
-void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L);
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L, int reachState);
+void moveRobot(int reachState,double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i);
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw straight lines with the SCARA robot
@@ -178,19 +179,38 @@ int main(void)
          y = ((1 - t)*yA) + (yB*t);
          L = sqrt((x*x) + (y*y));
 
+         reachState =0;
+
+         if(L>LMAX){
+            reachState=(reachState | L_EXCEEDS_MAX);
+         } else if(L<LMIN){
+            reachState=(reachState | L_EXCEEDS_MIN);
+         }
+
          beta = atan2(y,x);
          alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
 
          theta1 = beta + alpha;
          theta1Ldeg = mapAndConvertAngle(theta1);
          theta2Ldeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+         if(fabs(theta1Ldeg)>ABS_THETA1_DEG_MAX){
+            reachState=(reachState | THETA1L_EXCEEDS_MAX);
+         } else if(fabs(theta2Ldeg)>ABS_THETA2_DEG_MAX){
+            reachState=(reachState | THETA2L_EXCEEDS_MAX);
+         }
 
          theta1 = beta - alpha;
          theta1Rdeg = mapAndConvertAngle(theta1);
          theta2Rdeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+         if(fabs(theta1Rdeg)>ABS_THETA1_DEG_MAX){
+            reachState=(reachState | THETA1R_EXCEEDS_MAX);
+         } else if(fabs(theta2Rdeg)>ABS_THETA2_DEG_MAX){
+            reachState=(reachState | THETA2R_EXCEEDS_MAX);
+         }
 
+         moveRobot(reachState,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint);
 
-         printPointData(x,y,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint,L);
+         printPointData(x,y,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint,L,reachState);
          if(iPoint==NP){
             printRowBorder(OUTPUTS_TABLE_WIDTH,3);
          } else {
@@ -225,8 +245,23 @@ int main(void)
 bool doAgain(void)
 {
    bool doAgain = false;  // set to true if user wants to draw another line
-
-
+   char ch;
+   while (true)
+   {
+      printf("Do you want to draw another line [y/n]? ");
+      scanf_s("%c", &ch, 1);
+      flushInputBuffer();
+      if (tolower(ch) == 'y')
+      {
+         doAgain = true;
+         break;
+      } else if(tolower(ch) == 'n'){
+         doAgain = false;
+         break;
+      } else {
+         printf("Invalid input please try again\n");
+      }
+   }
 
 
    return doAgain;
@@ -426,7 +461,7 @@ void printRowBorder(int length, int style)
       break;
    }
 }
-void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L){
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L, int reachState){
    int numChars;
    numChars=printf("%-*c",1+LEFT_MARGIN, VL);
    numChars+=printf("POINT %02d:",i);
@@ -435,13 +470,13 @@ void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, dou
    numChars+=printf("   L = %+*.*lf",FIELD_WIDTH,PRECISION,L);
    printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
 
-   if(L>LMAX){
+   if((reachState & L_EXCEEDS_MAX) == L_EXCEEDS_MAX){
       numChars=printf("%-*c",1+LEFT_MARGIN, VL);
       printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
       numChars+=printf(" POINT IS OUTSIDE MAXIMUM REACH OF ROBOT (L_MAX = %.0lf) ",LMAX);
       printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
       printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
-   } else if(L<LMIN){
+   } else if((reachState & L_EXCEEDS_MIN) == L_EXCEEDS_MIN){
       numChars=printf("%-*c",1+LEFT_MARGIN, VL);
       printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
       numChars+=printf(" POINT IS INSIDE MINIMUM REACH OF ROBOT (L_MIN = %.0lf) ",LMIN);
@@ -452,11 +487,11 @@ void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, dou
       numChars+=printf("LEFT ARM:");
       numChars+=printf("  %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Ldeg,DEGREE_SYMBOL);
       numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Ldeg,DEGREE_SYMBOL);
-      if(fabs(theta1Ldeg)>ABS_THETA1_DEG_MAX && fabs(theta2Ldeg)>ABS_THETA2_DEG_MAX){
+      if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)&&((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
          numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
-      } else if(fabs(theta1Ldeg)>ABS_THETA1_DEG_MAX){
+      } else if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)){
          numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
-      } else if(fabs(theta2Ldeg)>ABS_THETA2_DEG_MAX){
+      } else if(((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
          numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
       }
       printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
@@ -465,13 +500,29 @@ void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, dou
       numChars+=printf("RIGHT ARM:");
       numChars+=printf(" %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Rdeg,DEGREE_SYMBOL);
       numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Rdeg,DEGREE_SYMBOL);
-      if(fabs(theta1Rdeg)>ABS_THETA1_DEG_MAX && fabs(theta2Rdeg)>ABS_THETA2_DEG_MAX){
+      if(((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX)&&((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX)){
          numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
-      } else if(fabs(theta1Rdeg)>ABS_THETA1_DEG_MAX){
+      } else if((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX){
          numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
-      } else if(fabs(theta2Rdeg)>ABS_THETA2_DEG_MAX){
+      } else if((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX){
          numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
       }
       printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
+   }
+}
+
+void moveRobot(int reachState,double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i){
+   if((reachState & (L_EXCEEDS_MAX | L_EXCEEDS_MIN)) == 0){
+      if((reachState & (THETA1L_EXCEEDS_MAX | THETA2L_EXCEEDS_MAX)) == 0){
+         rotateRobotJoints(theta1Ldeg,theta2Ldeg);
+         setPenPos(PEN_DOWN);
+      } else if((reachState & (THETA1R_EXCEEDS_MAX | THETA2R_EXCEEDS_MAX)) == 0){
+         rotateRobotJoints(theta1Rdeg,theta2Rdeg);
+         setPenPos(PEN_DOWN);
+      } else {
+         setPenPos(PEN_UP);
+      }
+   } else {
+      setPenPos(PEN_UP);
    }
 }
