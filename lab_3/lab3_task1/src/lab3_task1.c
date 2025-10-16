@@ -9,9 +9,9 @@ Details: Compute the [x,y] coordinates of points distributed on a straight line.
          straight line composed of multiple points.  Components of the C program include variables, formatted
          console output, user input with error checking, branches, loops, functions, and bitwise operations.
 
-Author(s): ????
+Author(s): Walker Golembioski (Set A)
 
-Declaration: I/We, ??????, declare that the following program was written by me/us.
+Declaration: I, Walker Golembioski, declare that the following program was written by me.
 
 Date Created: October 10 2024
 
