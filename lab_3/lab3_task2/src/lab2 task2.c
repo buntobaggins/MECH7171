@@ -9,9 +9,9 @@ Details: Compute the [x,y] coordinates of points distributed on a straight line.
          straight line composed of multiple points.  Components of the C program include variables, formatted
          console output, user input with error checking, branches, loops, functions, and bitwise operations.
 
-Author(s): ????
+Author(s): Walker Golembioski (Set A)
 
-Declaration: I/We, ??????, declare that the following program was written by me/us.
+Declaration: I, Walker Golembioski, declare that the following program was written by me.
 
 Date Created: October 10 2024
 
@@ -60,7 +60,7 @@ const unsigned char BR = 217;  // bottom right border symbol
 
 const unsigned char DEGREE_SYMBOL = 248;  // the degree symbol
 const unsigned char THETA_SYMBOL = 233;   // theta symbol
-const unsigned char ERROR_SYMBOL = 4;     // solid black diamond symbol
+const unsigned char ERROR_SYMBOL = 219;     // left  pointing black arrowhead symbol
 const int NUM_ERROR_SYMBOLS = 5;          // number of leading/trailing error symbols to print
 
 // constants to indicate reach errors
@@ -80,537 +80,106 @@ enum ARRAY_SIZES { MAX_COMMAND_SIZE = 256 };  // size of char array used to stor
 enum PEN_POS { PEN_UP, PEN_DOWN };            // indexes of the SCARA pen position
 
 //-------------------------------- Robot Definitions and Function Prototypes --------------------------------
-int initializeRobot();              // creates a TCP/IP connection between this program and the robot.
+int initializeRobot(void);              // creates a TCP/IP connection between this program and the robot.
 int sendRobotCommand(const char *); // sends a command string to the robot
-void closeRobot();                  // shuts down the connection to the robot
+void closeRobot(void);                  // shuts down the connection to the robot
 
 //----------------------------- Function Prototypes ---------------------------------------------------------
-bool flushInputBuffer();         // flushes any characters left in the standard input buffer
-void waitForEnterKey();          // waits for the Enter key to be pressed
-void endProgram();               // ends the program from anywhere in the code
+bool flushInputBuffer(void);         // flushes any characters left in the standard input buffer
+void waitForEnterKey(void);          // waits for the Enter key to be pressed
+void endProgram(void);               // ends the program from anywhere in the code
 double degToRad(double);         // returns angle in radians from input angle in degrees
 double radToDeg(double);         // returns angle in degrees from input angle in radians
 void setPenPos(int pos);         // sets the pen position of the robot
 void printRepeatedChar(unsigned char ch, int numRepeats);   // prints an ascii character repeatedly
 void rotateRobotJoints(double theta1Deg, double theta2Deg); // rotates robot arms to specified joint angles
-double mapAndConvertAngle(double theta); // maps radians angle into -PI <= theta <= +PI, converts to degrees
-bool doAgain();  // asks the user if they want to draw another line
-void printHeader(int tableWidth, const char *strTableTitle);  // prints a table header
-
-void printTableHBorder(unsigned char chL, unsigned char chR, int tableWidth); // prints table horz. border
-
-void printInputData(double xA, double yA, double xB, double yB, int NP);  // prints input data table
-
-// moves the robot to a specific point (if possible) based on the reachstate value and angle values
-void moveRobot(double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int reachState);
-
-// prints the points data table for the current line
-void printPointData(int iPoint, int NP, double x, double y,
-   double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int reachState);
-
-//----- TASK2 FUNCTIONS ------
-
-// computes joint angles for given tooltip position.  Returns reachability errors packed into an int
-int inverseKinematics(double x, double y, 
-                      double *ptheta1LDeg, double *ptheta2Ldeg, double *ptheta1Rdeg, double *ptheta2Rdeg);
-
-void getLineEndpoints(double *pxA, double *pyA, double *pxB, double *pyB); // gets line endpoints from user
-int getNP();   // gets the number of points on a line from the user
-
-// gets all the data necessary to draw a line with robot.  Includes endpoints and number of points on line
-void getInputData(double *pxA, double *pyA, double *pxB, double *pyB, int *pNP);
-
-void drawLine(double xA, double yA, double xB, double yB, int NP);  // draws a straight line with robot
-void printLineData(double xA, double yA, double xB, double yB, int NP); // prints line data into a table
+double mapAndConvertAngle(double theta); // maps angle in radians into degrees in the range -180 to +180
+bool doAgain(void); // asks the user if they want do draw another line
+void printHeader(int tableWidth, const char *strHeaderTitle);  // prints a table header
+void printInputData(double xA,double yA,double xB,double yB,int NP);  // prints some stuff I guess
+void printRowBorder(int length, int style); // Print the border between rows for a given length, style 1 top of table, style 2 middle, style 3 bottom
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L, int reachState);
+void moveRobot(int reachState,double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i);
+void getInputData(double *xA,double *xB,double *yA,double *yB,int *NP);
+void printLineData(double xA,double yA,double xB,double yB,int NP);
+void getLineEndPoints(double *xA,double *xB,double *yA,double *yB);
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw straight lines with the SCARA robot
 // ARGUMENTS:    none
 // RETURN VALUE: an int that tells the O/S how the program ended.  0 = EXIT_SUCCESS = normal termination
-int main()
+int main(void)
 {
-   double xA = NAN, yA = NAN, xB = NAN, yB = NAN;  // line endpoint coordinates
-   int NP = -1;                // number of points on the line, including endpoints
+   double xA = NAN, yA = NAN, xB = NAN, yB = NAN;  // line endpoints
+   int NP = -1;  // number of points on the line, including endpoints
+
 
    if(!initializeRobot()) exit(0);  // start the robot
 
-   sendRobotCommand("CYCLE_PEN_COLORS ON\n");  // set the pen to change colors on each move 
+   sendRobotCommand("CYCLE_PEN_COLORS ON\n");  // set the pen to change colors on each move
 
-   // draw multiple lines using the robot
+
+
    do
    {
       setPenPos(PEN_UP); // get ready to draw the next line (move to start point with pen up)
+      //===================================  Get the input data (inline) ===================================
+      getInputData(&xA,&xB,&yA,&yB,&NP);
 
-      getInputData(&xA, &yA, &xB, &yB, &NP); // get the line input data from the user
-
-      // clear screen for table printing
       printf("\nPress ENTER to clear the screen and print all input/output data...");
       waitForEnterKey();
       system("cls");
-
-      printInputData(xA, yA, xB, yB, NP); // print the line input data
-
-      drawLine(xA, yA, xB, yB, NP);       // draws a line using robot
-
-      printLineData(xA, yA, xB, yB, NP);  // prints line point data in table
+      //==============================  Print the input data table (function) ==============================
+      printInputData(xA,yA,xB,yB,NP);
+      //============= Generate the line points and move the robot to each reachable point.     =============
+      //============= If the point is reachable, move to it with the pen down.  If it is not,  =============
+      //============= move to the next reachable pont with the pen up and then put it down.    =============
+      drawLine(xA,yA,xB,yB,NP);
+      //============= Print the results in a table as shown in the specification               =============
+      printLineData(xA,yA,xB,yB,NP);
    }
    while(doAgain());  // doAgain asks the user if they want to generate another line
 
    sendRobotCommand("HOME\n");  // send the robot home
 
-   closeRobot();  // close connection to robot
-   endProgram();  // prompt the user to press ENTER to end the program
+   closeRobot();  // sever connection with robot
+   endProgram();  // ask user to press ENTER to end the program
 }
 
 //-----------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  Asks the user if they want to draw another line
 // ARGUMENTS:    none
 // RETURN VALUE: true if they want to, false if not
-bool doAgain()
+bool doAgain(void)
 {
-   int iret = -1;             // scanf_s return value
-   bool bHasGarbage = false;  // flushInputBuffer return value
-   char ch = 0;               // store single character user input
-
-   while(true)  // ensure good clean data
+   bool doAgain = false;  // set to true if user wants to draw another line
+   char ch;
+   while (true)
    {
-      // prompt the user and store function return values to check for error
-      printf("\nDo you want to draw another line [y/n]? "); 
-      iret = scanf_s("%c", &ch, 1);
-      bHasGarbage = flushInputBuffer();
-
-      // clean data
-      if(iret == 1 && !bHasGarbage)
+      printf("Do you want to draw another line [y/n]? ");
+      scanf_s("%c", &ch, 1);
+      flushInputBuffer();
+      if (tolower(ch) == 'y')
       {
-         // convert input to true/false if possible.  If not, try again
-         ch = (char)toupper(ch);  
-         if(ch == 'Y')
-            return true;
-         else if(ch == 'N')
-            return false;
-         else
-            printf("please enter 'y' or 'n'\n");
-      }
-      else  // multiple characters entered
-      {
-         printf("please enter a single character.\n");
+         doAgain = true;
+         break;
+      } else if(tolower(ch) == 'n'){
+         doAgain = false;
+         break;
+      } else {
+         printf("Invalid input please try again\n");
       }
    }
+
+
+   return doAgain;
 }
 
 //-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Move the robot using, if possible, the left arm.  If not possible, then moves the robot
-//               using the right arm, if possible.  If neither arm is possible, then the robot only receives
-//               a PEN_UP command.  If the robot is moved, the pen is lower _after_ the move.
-//               NOTE: This can lead to redundant PEN_DOWN commands when moving the robot.
-// ARGUMENTS:    theta1Ldeg, theta2Ldeg:   Left arm configuration joint angles
-//               theta1Rdeg, theta2Rdeg:  Right arm configuration joint angles
-//               reachState: indicates if L or theta limits are exceeded
-// RETURN VALUE: none
-void moveRobot(double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int reachState)
-{
-   bool bLeftOk = false, bRightOk = false, bLOk = false; // auxiliary variables to simplify code
-
-   bLOk = !(reachState & L_EXCEEDS_MAX) && !(reachState & L_EXCEEDS_MIN); // true if L within limits
-
-   // true if angles within limits
-   bLeftOk = !(reachState & THETA1L_EXCEEDS_MAX) && !(reachState & THETA2L_EXCEEDS_MAX);
-   bRightOk = !(reachState & THETA1R_EXCEEDS_MAX) && !(reachState & THETA2R_EXCEEDS_MAX);
-
-   if(!bLOk || (!bLeftOk && !bRightOk)) // bad L or bad left/right arms
-   {
-      setPenPos(PEN_UP);  // left the pen because we couldn't move 
-   }
-   else // moveable!
-   {
-      if(bLeftOk) // good left so must do if can
-      {
-         rotateRobotJoints(theta1Ldeg, theta2Ldeg);
-      }
-      else // right must be ok because of above checks
-      {
-         rotateRobotJoints(theta1Rdeg, theta2Rdeg);
-      }
-      setPenPos(PEN_DOWN);  // set the pen down now that we moved
-   }
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Prints the input data table
-// ARGUMENTS:    xA,yA,xB,yB:  The start point (A) and end point (B)
-//               NP: The number of points on the line
-// RETURN VALUE: none
-void printInputData(double xA, double yA, double xB, double yB, int NP)
-{
-   int numChars = -1;   // number of characters printed by printf
-
-   printHeader(INPUTS_TABLE_WIDTH, strInputsTableHeader);  // print the header portion of the table
-
-   // start point data
-   numChars = printf("%c%*cStart Point: x,y = [%+*.*le, %+*.*le]",
-      VL, LEFT_MARGIN, ' ', FIELD_WIDTH, PRECISION, xA, FIELD_WIDTH, PRECISION, yA);
-   printf("%*c\n", INPUTS_TABLE_WIDTH - numChars, VL);
-
-   // end point data
-   numChars = printf("%c%*cEnd Point:   x,y = [%+*.*le, %+*.*le]",
-      VL, LEFT_MARGIN, ' ', FIELD_WIDTH, PRECISION, xB, FIELD_WIDTH, PRECISION, yB);
-   printf("%*c\n", INPUTS_TABLE_WIDTH - numChars, VL);
-
-   // NP data
-   numChars = printf("%c%*cNP = %d", VL, LEFT_MARGIN, ' ', NP);
-   printf("%*c\n", INPUTS_TABLE_WIDTH - numChars, VL);
-
-   // bottom border
-   printTableHBorder(BL, BR, INPUTS_TABLE_WIDTH);
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Prints a table header of a table.  Includes the top/bottom borders of the title.  
-//               Title text is centered horizontally.
-// ARGUMENTS:    tableWidth:  The width of the table in characters, including the left/right borders
-//               strTableTitle: pointer to a string that holds the title text
-// RETURN VALUE: none
-void printHeader(int tableWidth, const char *strTableTitle)
-{
-   int numChars = -1;   // number of characters printed by printf
-   int titleWidth = -1; // number of characters in the table title
-
-   titleWidth = (int)strlen(strTableTitle);  // get number of characters in the title
-
-   // top border
-   printTableHBorder(TL, TR, tableWidth);
-
-   // Header title.  Title string is centered.
-   numChars = printf("%c%*c%s", VL, (tableWidth - 2 - titleWidth) / 2, ' ', strTableTitle);
-   printf("%*c\n", tableWidth - numChars, VL);
-
-   // mid border
-   printTableHBorder(CL, CR, tableWidth);
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Prints the points data table
-// ARGUMENTS:    iPoint: index of point on the line
-//               NP: number of points on the line
-//               x,y: line point cartesian coordinates
-//               theta1Ldeg through theta2Rdeg:  Left and right joint angles in degrees
-//               reachState:  value to represent all error conditions
-// RETURN VALUE: ????
-void printPointData(int iPoint, int NP, double x, double y, double theta1Ldeg, double theta2Ldeg,
-   double theta1Rdeg, double theta2Rdeg, int reachState)
-{
-   int numChars = -1;      // number of characters returned by printf     
-   char chL = 0, chR = 0;  // left and right edge characters for table horizontal borders
-
-   // print x,y, and L
-   numChars = printf("%c%*cPOINT %02d:   x = %+*.*le,   y = %+*.*le.   L = %+*.*le", VL, LEFT_MARGIN, ' ', iPoint + 1,
-      FIELD_WIDTH, PRECISION, x, FIELD_WIDTH, PRECISION, y, FIELD_WIDTH, PRECISION, sqrt(x * x + y * y));
-   printf("%*c\n", OUTPUTS_TABLE_WIDTH - numChars, VL);
-
-   if(reachState == L_EXCEEDS_MIN || reachState == L_EXCEEDS_MAX)  // L error messages
-   {
-      numChars = printf("%c%*c", VL, LEFT_MARGIN, ' ');
-
-      printRepeatedChar(ERROR_SYMBOL, NUM_ERROR_SYMBOLS);
-      numChars += NUM_ERROR_SYMBOLS;
-
-      if(reachState == L_EXCEEDS_MAX)  // L > LMAX
-         numChars += printf(" POINT IS OUTSIDE MAXIMUM REACH OF ROBOT (L_MAX = %lg mm) ", LMAX);
-      else // L < LMIN
-         numChars += printf(" POINT IS INSIDE MINIMUM REACH OF ROBOT (L_MIN = %lg mm) ", LMIN);
-
-      printRepeatedChar(ERROR_SYMBOL, NUM_ERROR_SYMBOLS);
-      numChars += NUM_ERROR_SYMBOLS;
-
-      printf("%*c\n", OUTPUTS_TABLE_WIDTH - numChars, VL);
-   }
-   else  // print angles and any associated error messages
-   {
-      //----- left arm -----
-      numChars = printf("%c%*cLEFT ARM:  %c1 = %+*.*le%c, %c2 = %+*.*le%c.  ", VL, LEFT_MARGIN, ' ',
-         THETA_SYMBOL, FIELD_WIDTH, PRECISION, theta1Ldeg, DEGREE_SYMBOL,
-         THETA_SYMBOL, FIELD_WIDTH, PRECISION, theta2Ldeg, DEGREE_SYMBOL);
-
-      // erros
-      if(reachState & THETA1L_EXCEEDS_MAX || reachState & THETA2L_EXCEEDS_MAX)
-      {
-         if(reachState & THETA1L_EXCEEDS_MAX && reachState & THETA2L_EXCEEDS_MAX) // both angles bad
-            numChars += printf("%c1 and %c2 exceed max angle!", THETA_SYMBOL, THETA_SYMBOL);
-         else if(reachState & THETA1L_EXCEEDS_MAX) // shoulder angle bad
-            numChars += printf("%c1 exceeds max angle!", THETA_SYMBOL);
-         else // elbow angle bad
-            numChars += printf("%c2 exceeds max angle!", THETA_SYMBOL);
-      }
-      printf("%*c\n", OUTPUTS_TABLE_WIDTH - numChars, VL);
-
-      //----- right arm -----
-      numChars = printf("%c%*cRIGHT ARM: %c1 = %+*.*le%c, %c2 = %+*.*le%c.  ", VL, LEFT_MARGIN, ' ',
-         THETA_SYMBOL, FIELD_WIDTH, PRECISION, theta1Rdeg, DEGREE_SYMBOL,
-         THETA_SYMBOL, FIELD_WIDTH, PRECISION, theta2Rdeg, DEGREE_SYMBOL);
-
-      // errors
-      if(reachState & THETA1R_EXCEEDS_MAX || reachState & THETA2R_EXCEEDS_MAX) // both angles bad
-      {
-         if(reachState & THETA1R_EXCEEDS_MAX && reachState & THETA2R_EXCEEDS_MAX)
-            numChars += printf("%c1 and %c2 exceed max angle!", THETA_SYMBOL, THETA_SYMBOL);
-         else if(reachState & THETA1R_EXCEEDS_MAX) // shoulder angle bad
-            numChars += printf("%c1 exceeds max angle!", THETA_SYMBOL);
-         else // elbow angle bad
-            numChars += printf("%c2 exceeds max angle!", THETA_SYMBOL);
-      }
-      printf("%*c\n", OUTPUTS_TABLE_WIDTH - numChars, VL);
-   }
-
-   // print border beneath angle data.  Note that last point is different than the others
-   chL = iPoint == NP - 1 ? BL : CL;
-   chR = iPoint == NP - 1 ? BR : CR;
-   printTableHBorder(chL, chR, OUTPUTS_TABLE_WIDTH);
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Prints a horiztonal border for a table
-// ARGUMENTS:    chL/chR: left/right edge characters
-//               tableWidth: with of table including borders
-// RETURN VALUE: none
-void printTableHBorder(unsigned char chL, unsigned char chR, int tableWidth)
-{
-   printf("%c", chL);  // left edge
-   printRepeatedChar(HL, tableWidth - 2); // long horizontal line
-   printf("%c\n", chR); // right edge
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Computes the SCARA joint angles for a given tooltip x,y coordinate point.  Packs an int with
-//               errors associated with physical and joint angle limits being exceeded.
-// ARGUMENTS:    x,y:  tooltip coordinate point
-//               ptheta1Ldeg, ptheta2Ldeg:  pointers to left arm joint angles
-//               ptheta1Rdeg, ptheta2Rdeg:  pointers to right arm joint angles
-// RETURN VALUE: an int containing bits that are set based and L reachability and joint angle limits exceeded
-int inverseKinematics(double x, double y, 
-                      double *ptheta1Ldeg, double *ptheta2Ldeg, double *ptheta1Rdeg, double *ptheta2Rdeg)
-{
-   int reachState =  -1;                      // int to be packed with bitwize error flags
-   double L = NAN, beta = NAN, alpha = NAN;  // L = tooltip distance.  beta/alpha = auxiliary angles
-   double theta1 = NAN, theta2 = NAN;        // auxiliary variables to compute joint angles in radians
-
-   // initialize joint angles
-   *ptheta1Ldeg = *ptheta2Ldeg = *ptheta1Rdeg = *ptheta2Rdeg = NAN;
-
-   //------ compute L and check for reachability
-   L = sqrt(x * x + y * y);  // tooltip distance
-
-   if(L < LMIN) return L_EXCEEDS_MIN;  // L too small
-   
-   if(L > LMAX) return L_EXCEEDS_MIN;  // L too large
-
-   reachState = 0; // set return value starting value (0 means both arms can reach)
-
-   // compute auxiliary angles alpha and beta
-   beta = atan2(y, x);
-   alpha = acos((L2 * L2 - L * L - L1 * L1) / (-2.0 * L * L1));
-
-   //--- left arm angles
-   theta1 = beta + alpha;
-   theta2 = atan2(y - L1 * sin(theta1), x - L1 * cos(theta1)) - theta1;
-   // map the angles into range -180 deg <= theta <= +180 deg
-   *ptheta1Ldeg = mapAndConvertAngle(theta1);
-   *ptheta2Ldeg = mapAndConvertAngle(theta2);
-   // set the reach state for each joint
-   if(fabs(*ptheta1Ldeg) > ABS_THETA1_DEG_MAX) reachState |= THETA1L_EXCEEDS_MAX;
-   if(fabs(*ptheta2Ldeg) > ABS_THETA2_DEG_MAX) reachState |= THETA2L_EXCEEDS_MAX;
-
-   //--- right arm angles
-   theta1 = beta - alpha;
-   theta2 = atan2(y - L1 * sin(theta1), x - L1 * cos(theta1)) - theta1;
-   // map the angles into range -180 <= theta <= +180
-   *ptheta1Rdeg = mapAndConvertAngle(theta1);
-   *ptheta2Rdeg = mapAndConvertAngle(theta2);
-   // set the reach state for each joint
-   if(fabs(*ptheta1Rdeg) > ABS_THETA1_DEG_MAX) reachState |= THETA1R_EXCEEDS_MAX;
-   if(fabs(*ptheta2Rdeg) > ABS_THETA2_DEG_MAX) reachState |= THETA2R_EXCEEDS_MAX;
-
-   return reachState;
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Gets the cartesian coordinates of the each endpoint on a line
-// ARGUMENTS:    pxA, pyA: pointers to line start point cartesian coordinates
-//               pxB, pyB: pointers to line end point cartesian coordinates
-// RETURN VALUE: 
-void getLineEndpoints(double *pxA, double *pyA, double *pxB, double *pyB)
-{
-   int iret = -1; // scanf_s return value
-   bool bHasGarbage = false;  // flushInputBuffer return value
-
-   while(true)  // re-ask if input data has any errors
-   {
-      // prompt user and get function feedback values to trap errors
-      printf("Enter the start and point coordinates [x0,y0,x1,y1] (comma separated): ");
-      iret = scanf_s("%lf , %lf , %lf , %lf", pxA, pyA, pxB, pyB);
-      bHasGarbage = flushInputBuffer();
-
-      // good data, adios loop!
-      if(iret == 4 && !bHasGarbage)
-      {
-         printf("Got 4 good values (%lg, %lg, %lg, %lg)!\n", *pxA, *pyA, *pxB, *pyB);
-         return;
-      }
-
-      //--- now check for user input errors
-      if(iret == 4) // must have trailing garbage on yB
-      {
-         printf("Got all values (%lg, %lg, %lg, %lg) but yB contains trailing garbage!\n\n", *pxA, *pyA, *pxB, *pyB);
-      }
-      else if(iret == 3)  // Could be trailing garbage on xB or leading garbage on yB or no comma
-      {
-         printf("Got first 3 values (%lg, %lg, %lg)\n", *pxA, *pyA, *pxB);
-         printf("xB may have trailing garbage or yB may have leading garbage or you forgot the comma.\n\n");
-      }
-      else if(iret == 2)  // Could be trailing garbage on yA or leading garbage on xB or no comma
-      {
-         printf("Got first 2 values (%lg, %lg)\n", *pxA, *pyA);
-         printf("yA may have trailing garbage or xB may have leading garbage or you forgot the comma.\n\n");
-      }
-      else if(iret == 1)  // Could be trailing garbage on xA or leading garbage on yA or no comma
-      {
-         printf("Only got xA value (%lg)!\n", *pxA);
-         printf("xA may have trailing garbage or yA may have leading garbage or you forgot the comma.\n\n");
-      }
-      else // iret == 0.  Got nothing.  Must be leading garbage on xA value
-      {
-         printf("Didn't get any usable data. xA value contains leading non-numerical characters.\n\n");
-      }
-   }
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Gets, from the user, the number of points used to generate a straight line of equally 
-//               spaced points.  Data is ensured to be error free.
-// ARGUMENTS:    none
-// RETURN VALUE: the number of points
-int getNP()
-{
-   int NP = -1;   // number of points of the line
-   int iret = -1; // scanf_s return value
-   bool bHasGarbage = false;  // flushInputBuffer return value
-
-   while(true)  // re-ask if input data has any errors
-   {
-      // prompt user and get function feedback values to trap errors
-      printf("Enter the number of points NP on the line (>1, includes endpoints): ");
-      iret = scanf_s("%d", &NP);
-      bHasGarbage = flushInputBuffer();
-
-      // got clean data, check if in range
-      if(iret == 1 && !bHasGarbage)
-      {
-         if(NP > 1)  // all good, adios loop!
-         {
-            printf("Got a good NP value (%d).  Thanks!!\n", NP);
-            return NP;
-         }
-         else // data out of range!
-         {
-            printf("NP value (%d) must be >1!\n", NP);
-         }
-      }
-      else if(iret == 0)  // got nothing
-      {
-         printf("Didn't get any usable data. Input contains leading non-numerical characters.\n\n");
-      }
-      else // must have trailing garbage on NP
-      {
-         printf("Got NP value (%d) but it contains trailing non-numerical characters!\n\n", NP);
-      }
-   }
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Gets all the data necessary to draw an approximation of a straight line using the robot.
-//               To approximate a straight line, the line is subdivided into a number of equally spaced
-//               points, NP.  xA,yB is the line start point, xB,yB is the line end point
-// ARGUMENTS:    pxA, pyA: pointers to the line start point coordinates
-//               pxB, pyB: pointers to the line end point coordinates
-//               pNP: pointer to the number of point on the line
-// RETURN VALUE: none
-void getInputData(double *pxA, double *pyA, double *pxB, double *pyB, int *pNP)
-{
-   getLineEndpoints(pxA, pyA, pxB, pyB);  // get the line endpoint coordinates from the user
-   *pNP = getNP();                        // get the number of points on the line from the user
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Draws an approximation of a straight line using the robot.  To approximate a straight line, 
-//               the line is subdivided into a number of equally spaced points and the robot is
-//               moved from point to point. 
-// ARGUMENTS:    xA, yA: line start point coordinates
-//               xB, yB: line end point coordinates
-//               NP: number of points on the line
-// RETURN VALUE: none
-void drawLine(double xA, double yA, double xB, double yB, int NP)
-{
-   double theta1Ldeg = NAN, theta2Ldeg = NAN, theta1Rdeg = NAN, theta2Rdeg = NAN; // joint angles in degrees
-   double t = NAN;            // parametric line parameter
-   double x = NAN, y = NAN;   // point coordinates
-   int iPoint = 0;            // index of point on line
-   int reachState = -1;       // reachability state for both arms for given tooltip point x,y
-
-   // loop to generate points and move the robot
-   for(iPoint = 0; iPoint < NP; iPoint++)
-   {
-      // generate the current point x,y data using parametric equation
-      t = (double)iPoint / (double)(NP - 1);
-      x = xA + (xB - xA) * t;
-      y = yA + (yB - yA) * t;
-
-      //----------------------- inverseKinematics calculations -----------------------
-      reachState = inverseKinematics(x, y, &theta1Ldeg, &theta2Ldeg, &theta1Rdeg, &theta2Rdeg);
-
-      //-------- print the point data to the table
-      moveRobot(theta1Ldeg, theta2Ldeg, theta1Rdeg, theta2Rdeg, reachState);
-   }
-}
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Prints data for each point on the line drawn by the robot.  Note that the robot moves from
-//               one point to another in curved arcs, so to approximate a straight line, the line is 
-//               subdivided into a number of equally spaced points and the robot is moved from point to point.
-// ARGUMENTS:    xA, yA: line start point coordinates
-//               xB, yB: line end point coordinates
-//               NP: number of points on the line
-// RETURN VALUE: none
-void printLineData(double xA, double yA, double xB, double yB, int NP)
-{
-   double theta1Ldeg = NAN, theta2Ldeg = NAN, theta1Rdeg = NAN, theta2Rdeg = NAN; // joint angles in degrees
-   double t = NAN;            // parametric line parameter
-   double x = NAN, y = NAN;   // point coordinates
-   int iPoint = 0;            // index of point on line
-   int reachState = -1;       // reachability state for both arms for given tooltip point x,y
-
-   printHeader(OUTPUTS_TABLE_WIDTH, strLinePointsTableHeader); // print table header with borders
-
-   // loop to generate points print each point's data to a table
-   for(iPoint = 0; iPoint < NP; iPoint++)
-   {
-      // generate the current point x,y data using parametric equation
-      t = (double)iPoint / (double)(NP - 1);
-      x = xA + (xB - xA) * t;
-      y = yA + (yB - yA) * t;
-
-      //----------------------- inverseKinematics calculations -----------------------
-      reachState = inverseKinematics(x, y, &theta1Ldeg, &theta2Ldeg, &theta1Rdeg, &theta2Rdeg);
-
-      //-------- print the point data to the table
-      printPointData(iPoint, NP, x, y, theta1Ldeg, theta2Ldeg, theta1Rdeg, theta2Rdeg, reachState);
-   }
-}
-
-
-//-----------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Maps an angle in radians into a an equivalent angle in degrees that follows the angle ranges 
-//               defined in the robot (-180 <= theta <= +180)
-// ARGUMENTS:    theta: the angle in radians 
-// RETURN VALUE: the mapped angle in radians
+// DESCRIPTION:  Maps an angle in radians into a an equivalent angle in degrees that follows the angle ranges
+//               defined in the robot (-180 deg <= thetaDeg <= +180 deg)
+// ARGUMENTS:    theta: the angle in radians
+// RETURN VALUE: the mapped angle in degrees
 double mapAndConvertAngle(double theta)
 {
    theta = fmod(theta, 2.0 * PI);  // put in range -2*PI <= ang <= +2*PI
@@ -621,7 +190,7 @@ double mapAndConvertAngle(double theta)
    else if(theta < -PI)
       theta += 2.0 * PI;
 
-   return radToDeg(theta);  // convert to degrees before returning
+   return radToDeg(theta);
 }
 
 //-----------------------------------------------------------------------------------------------------------
@@ -647,7 +216,7 @@ double radToDeg(double angRad)
 // ARGUMENTS:    none
 // RETURN VALUE: false if nothing or only '\n' in stdin. true if extra keystrokes precede the '\n'.
 //               Good for detecting left over garbage from scanf_s in the input buffer
-bool flushInputBuffer()
+bool flushInputBuffer(void)
 {
    int ch; // temp character variable
    bool bHasGarbage = false;
@@ -664,7 +233,7 @@ bool flushInputBuffer()
 // DESCRIPTION:  Waits for user to press enter.  flushes stdin if keystrokes precede enter
 // ARGUMENTS:    none
 // RETURN VALUE: none
-void waitForEnterKey()
+void waitForEnterKey(void)
 {
    unsigned char ch;
    if((ch = (unsigned char)getchar()) != EOF && ch != '\n') flushInputBuffer();
@@ -674,7 +243,7 @@ void waitForEnterKey()
 // DESCRIPTION:  Ends program from anywhere in code.
 // ARGUMENTS:    none
 // RETURN VALUE: none
-void endProgram()
+void endProgram(void)
 {
    printf("\nPress ENTER to end the program...\n");
    waitForEnterKey();
@@ -723,4 +292,259 @@ void setPenPos(int penPos)
       sendRobotCommand("PEN_DOWN\n");
    else // unkown position
       printf("Bad value (%d) for pen positiion\n", penPos);
+}
+
+//-----------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  prints a centered header title string for a table of a specified width
+// ARGUMENTS:    tableWidth:  The width of the table in characters, including the left/right borders
+//               strHeaderTitle: The header title string
+// RETURN VALUE: none
+void printHeader(int tableWidth, const char *strHeaderTitle)
+{
+   int numChars;
+   int length = strlen(strHeaderTitle);
+   numChars=printf("%c",VL);
+   numChars+=printf("%*s",((tableWidth-2-length)/2)+length,strHeaderTitle);
+   printf("%*c\n",tableWidth-numChars,VL);
+}
+
+void printInputData(double xA,double yA,double xB,double yB,int NP)
+{
+   int numChars;
+   printRowBorder(INPUTS_TABLE_WIDTH,1);
+   printHeader(INPUTS_TABLE_WIDTH,strInputsTableHeader);
+   printRowBorder(INPUTS_TABLE_WIDTH,2);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("Start Point: x,y = [%+*.*lf, %+*.*lf]",FIELD_WIDTH,PRECISION,xA,FIELD_WIDTH,PRECISION,yA);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("End Point:   x,y = [%+*.*lf, %+*.*lf]",FIELD_WIDTH,PRECISION,xB,FIELD_WIDTH,PRECISION,yB);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("NP = %d",NP);
+   printf("%*c\n",INPUTS_TABLE_WIDTH-numChars,VL);
+   printRowBorder(INPUTS_TABLE_WIDTH,3);
+}
+
+void printRowBorder(int length, int style)
+{
+   int i;
+   switch (style)
+   {
+   case 1:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",TL);
+         } else if (i == length){
+            printf("%c\n",TR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+   case 2:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",CL);
+         } else if (i == length){
+            printf("%c\n",CR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+   case 3:
+      for(i=1;i<=length;i++){
+         if (i == 1){
+            printf("%c",BL);
+         } else if (i == length){
+            printf("%c\n",BR);
+         } else{
+            printf("%c",HL);
+         }
+      }
+      break;
+
+   default:
+      break;
+   }
+}
+void printPointData(double x,double y, double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i, double L, int reachState){
+   int numChars;
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("POINT %02d:",i);
+   numChars+=printf("   x = %+*.*lf,",FIELD_WIDTH,PRECISION,x);
+   numChars+=printf("   y = %+*.*lf.",FIELD_WIDTH,PRECISION,y);
+   numChars+=printf("   L = %+*.*lf",FIELD_WIDTH,PRECISION,L);
+   printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
+
+   if((reachState & L_EXCEEDS_MAX) == L_EXCEEDS_MAX){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS OUTSIDE MAXIMUM REACH OF ROBOT (L_MAX = %.0lf) ",LMAX);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else if((reachState & L_EXCEEDS_MIN) == L_EXCEEDS_MIN){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS INSIDE MINIMUM REACH OF ROBOT (L_MIN = %.0lf) ",LMIN);
+      printRepeatedChar(ERROR_SYMBOL,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else{
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("LEFT ARM:");
+      numChars+=printf("  %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Ldeg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Ldeg,DEGREE_SYMBOL);
+      if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)&&((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if(((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
+
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("RIGHT ARM:");
+      numChars+=printf(" %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta1Rdeg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,theta2Rdeg,DEGREE_SYMBOL);
+      if(((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX)&&((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX)){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",OUTPUTS_TABLE_WIDTH-numChars,VL);
+   }
+}
+
+void moveRobot(int reachState,double theta1Ldeg, double theta2Ldeg, double theta1Rdeg, double theta2Rdeg, int i){
+   if((reachState & (L_EXCEEDS_MAX | L_EXCEEDS_MIN)) == 0){
+      if((reachState & (THETA1L_EXCEEDS_MAX | THETA2L_EXCEEDS_MAX)) == 0){
+         rotateRobotJoints(theta1Ldeg,theta2Ldeg);
+         setPenPos(PEN_DOWN);
+      } else if((reachState & (THETA1R_EXCEEDS_MAX | THETA2R_EXCEEDS_MAX)) == 0){
+         rotateRobotJoints(theta1Rdeg,theta2Rdeg);
+         setPenPos(PEN_DOWN);
+      } else {
+         setPenPos(PEN_UP);
+      }
+   } else {
+      setPenPos(PEN_UP);
+   }
+}
+void getInputData(double *xA,double *xB,double *yA,double *yB,int *NP){
+   getLineEndPoints(xA,xB,yA,yB);
+   *NP=getNP();
+}
+void getLineEndPoints(double *xA,double *xB,double *yA,double *yB){
+      // line endpoint data (xA,yA,xB,yB)
+      int iret,bHasGarbage;
+      while(true)
+         {
+            printf("Enter the line end point coordinates xA,yA,xB,yB (comma seperated): ");
+            iret = scanf_s("%lf,%lf,%lf,%lf",xA,yA,xB,yB);
+            bHasGarbage = flushInputBuffer();
+            if (iret == 4)
+            {
+               printf("Got good end point values: xA, yA = [%.0lf,%.0lf] and xB, yB = [%.0lf,%.0lf].\n",*xA,*yA,*xB,*yB);
+               break;
+            } else {
+               printf("Invalid input. Please try again. \n");
+            }
+         }
+}
+int getNP(){
+      // number of points on the line (NP)
+      int iret,bHasGarbage,NP;
+      while(true)
+         {
+            printf("Enter the number of points on the line, NP: ");
+            iret = scanf_s("%d",&NP);
+            bHasGarbage = flushInputBuffer();
+            if (bHasGarbage == 0 && NP >= 2)
+            {
+               printf("Got good value: NP = %d.\n",NP);
+               break;
+            } else {
+               printf("Invalid input. Please try again. \n");
+            }
+         }
+         return NP;
+}
+int inverseKinematics(double x,double y,double *theta1Ldeg,double *theta2Ldeg,double *theta1Rdeg,double *theta2Rdeg,double L){
+   int reachState =0;
+
+   if(L>LMAX){
+      reachState=(reachState | L_EXCEEDS_MAX);
+      *theta1Ldeg = NAN;
+      *theta2Ldeg = NAN;
+      *theta1Rdeg = NAN;
+      *theta2Rdeg = NAN;
+   } else if(L<LMIN){
+      reachState=(reachState | L_EXCEEDS_MIN);
+      *theta1Ldeg = NAN;
+      *theta2Ldeg = NAN;
+      *theta1Rdeg = NAN;
+      *theta2Rdeg = NAN;
+   }else{
+
+      double beta = atan2(y,x);
+      double alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
+
+      double theta1 = beta + alpha;
+      *theta1Ldeg = mapAndConvertAngle(theta1);
+      *theta2Ldeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+      if(fabs(*theta1Ldeg)>ABS_THETA1_DEG_MAX){
+         reachState=(reachState | THETA1L_EXCEEDS_MAX);
+      } else if(fabs(*theta2Ldeg)>ABS_THETA2_DEG_MAX){
+         reachState=(reachState | THETA2L_EXCEEDS_MAX);
+      }
+
+      theta1 = beta - alpha;
+      *theta1Rdeg = mapAndConvertAngle(theta1);
+      *theta2Rdeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
+      if(fabs(*theta1Rdeg)>ABS_THETA1_DEG_MAX){
+         reachState=(reachState | THETA1R_EXCEEDS_MAX);
+      } else if(fabs(*theta2Rdeg)>ABS_THETA2_DEG_MAX){
+         reachState=(reachState | THETA2R_EXCEEDS_MAX);
+      }
+   }
+
+   return reachState;
+}
+void printLineData(double xA,double yA,double xB,double yB,int NP){
+   int iPoint,reachState;
+   double theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg;
+   printRowBorder(OUTPUTS_TABLE_WIDTH,1);
+   printHeader(OUTPUTS_TABLE_WIDTH,strLinePointsTableHeader);
+   printRowBorder(OUTPUTS_TABLE_WIDTH,2);
+   for(iPoint=1;iPoint<=NP;iPoint++){
+      double t = (iPoint-1.0)/(NP-1);
+      double x = ((1 - t)*xA) + (xB*t);
+      double y = ((1 - t)*yA) + (yB*t);
+      double L = sqrt((x*x) + (y*y));
+      reachState = inverseKinematics(x,y,&theta1Ldeg,&theta2Ldeg,&theta1Rdeg,&theta2Rdeg,L);
+      printPointData(x,y,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint,L,reachState);
+      if(iPoint==NP){
+            printRowBorder(OUTPUTS_TABLE_WIDTH,3);
+         } else {
+            printRowBorder(OUTPUTS_TABLE_WIDTH,2);
+         }
+   }
+
+}
+drawLine(double xA,double yA,double xB,double yB,int NP){
+   int iPoint,reachState;
+   double theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg;
+   for(iPoint=1;iPoint<=NP;iPoint++){
+      double t = (iPoint-1.0)/(NP-1);
+      double x = ((1 - t)*xA) + (xB*t);
+      double y = ((1 - t)*yA) + (yB*t);
+      double L = sqrt((x*x) + (y*y));
+      reachState = inverseKinematics(x,y,&theta1Ldeg,&theta2Ldeg,&theta1Rdeg,&theta2Rdeg,L);
+      printf("\n %lf %lf %lf %lf %d\n",theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,reachState);
+      moveRobot(reachState,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint);
+   }
 }
