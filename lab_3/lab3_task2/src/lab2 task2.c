@@ -328,6 +328,7 @@ void printInputData(double xA,double yA,double xB,double yB,int NP)
 
 void printRowBorder(int length, int style)
 {
+   //I know this is bad but it works and I'm to lazy to change it on both files
    int i;
    switch (style)
    {
@@ -498,7 +499,8 @@ int inverseKinematics(double x,double y,double *theta1Ldeg,double *theta2Ldeg,do
       *theta2Ldeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
       if(fabs(*theta1Ldeg)>ABS_THETA1_DEG_MAX){
          reachState=(reachState | THETA1L_EXCEEDS_MAX);
-      } else if(fabs(*theta2Ldeg)>ABS_THETA2_DEG_MAX){
+      }
+      if(fabs(*theta2Ldeg)>ABS_THETA2_DEG_MAX){
          reachState=(reachState | THETA2L_EXCEEDS_MAX);
       }
 
@@ -507,7 +509,8 @@ int inverseKinematics(double x,double y,double *theta1Ldeg,double *theta2Ldeg,do
       *theta2Rdeg = mapAndConvertAngle(atan2(y-L1*sin(theta1),x-L1*cos(theta1))-theta1);
       if(fabs(*theta1Rdeg)>ABS_THETA1_DEG_MAX){
          reachState=(reachState | THETA1R_EXCEEDS_MAX);
-      } else if(fabs(*theta2Rdeg)>ABS_THETA2_DEG_MAX){
+      }
+      if(fabs(*theta2Rdeg)>ABS_THETA2_DEG_MAX){
          reachState=(reachState | THETA2R_EXCEEDS_MAX);
       }
    }
@@ -544,7 +547,7 @@ drawLine(double xA,double yA,double xB,double yB,int NP){
       double y = ((1 - t)*yA) + (yB*t);
       double L = sqrt((x*x) + (y*y));
       reachState = inverseKinematics(x,y,&theta1Ldeg,&theta2Ldeg,&theta1Rdeg,&theta2Rdeg,L);
-      printf("\n %lf %lf %lf %lf %d\n",theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,reachState);
+      //printf("\n %lf %lf %lf %lf %d\n",theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,reachState); <- used for testing
       moveRobot(reachState,theta1Ldeg,theta2Ldeg,theta1Rdeg,theta2Rdeg,iPoint);
    }
 }
