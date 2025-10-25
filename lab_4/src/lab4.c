@@ -9,9 +9,9 @@ Details: Control the SCARA robot using various commands.  Draw lines and curves 
          variables (including pointers), formatted console output, error checked user input, branches, loops,
          functions, bitwise operations, structures.
 
-Author(s): <names/ids>
+Author(s): Walker Golembioski, A01374098
 
-Declaration: I/We, <names>, declare that the following program was written by me/us.
+Declaration: I, Walker Golembioski, declare that the following program was written by me.
 
 Date Created: Oct 25 2024
 
@@ -54,7 +54,7 @@ void     rotateRobotJoints(JOINT_ANGLES ja);                         // send com
 void     drawShape(int shape);                                       // draw shape based on shape index
 
 //----- MANDITORY FUNCTION PROTOTYPES -----
-
+int      getNumPoints();
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw various shapes with the SCARA robot
@@ -90,14 +90,6 @@ void drawShape(int shape) {
 // RETURN VALUE: true if they want to, false if not
 bool doAgain(void) {
    return false;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-// DESCRIPTION:  Asks the user what shape they want to draw
-// ARGUMENTS:    none
-// RETURN VALUE: shape choice index (see enum SHAPES for values)
-int getShapeChoice(void) {
-   return LINE;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -223,3 +215,173 @@ void rotateRobotJoints(JOINT_ANGLES ja) {
    sendRobotCommand(strCommand);
 }
 
+//-------------------------------------------------- Get Functions -----------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  Asks the user what shape they want to draw
+// ARGUMENTS:    none
+// RETURN VALUE: shape choice index (see enum SHAPES for values)
+int getShapeChoice(void) {
+   char input;
+   int bHasGarbage;
+   while(true){
+      printf("What shape would you like to draw [L for Line, A for Arc, Q for Quadratic Bezier]: ");
+      scanf_s("%c", &input);
+      bHasGarbage = flushInputBuffer();
+      if(tolower(input) == 'l'){
+
+         return LINE;
+         break;
+      }
+      if(tolower(input) == 'a'){
+         return ARC;
+         break;
+      }
+      if(tolower(input) == 'q'){
+         return QUADRATIC_BEZIER;
+         break;
+      }
+      if(bHasGarbage >= 1){
+         printf("please enter a single valid character\n");
+      } else {
+         printf("Bad input! Please enter L or A or Q (no leading/trailing characters)\n");
+      }
+   }
+
+}
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  Asks the user for line points and the returns the input
+// ARGUMENTS:    none
+// RETURN VALUE: LINE_DATE struct
+LINE_DATA getLineData(){
+   int iret,bHasGarbage;
+   //this is the bs comments were invented for
+   LINE_DATA LINE_DATA;
+   POINT2D pA,pB;
+   while(true){
+      printf("Enter the line end point coordinates xA,yA,xB,yB (comma seperated): ");
+      iret = scanf_s("%lf,%lf,%lf,%lf",&pA.x,&pA.y,&pB.x,&pB.y);
+      bHasGarbage = flushInputBuffer();
+      if (iret == 4){
+         printf("Got good end point values: xA, yA = [%.0lf,%.0lf] and xB, yB = [%.0lf,%.0lf].\n",pA.x,pA.y,pB.x,pB.y);
+         break;
+      } else {
+         printf("Invalid input. Please try again. \n");
+      }
+   }
+   LINE_DATA.pA = pA;
+   LINE_DATA.pB = pB;
+   LINE_DATA.NP = getNumPoints();
+   return LINE_DATA;
+}
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  Asks the user for the number of point to be used in a line
+// ARGUMENTS:    none
+// RETURN VALUE: NP number of point
+int getNumPoints(){
+   int bHasGarbage,NP;
+   while(true)
+   {
+      printf("Enter the number of points on the line, NP: ");
+      scanf_s("%d",&NP);
+      bHasGarbage = flushInputBuffer();
+      if (bHasGarbage == 0 && NP >= 2)
+      {
+         printf("Got good value: NP = %d.\n",NP);
+         break;
+      } else {
+         printf("Invalid input. Please try again. \n");
+      }
+   }
+   return NP;
+}
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  Asks the user for the points need to make a arc
+// ARGUMENTS:    none
+// RETURN VALUE: ARC_DATA
+ARC_DATA getArcData(){
+   ARC_DATA ARC_DATA;
+   POINT2D pc;
+   int NP, iret, bHasGarbage;
+   double thetaStartDeg, thetaEndDeg, r;
+   while(true){
+      printf("Enter arc center point coordinates x,y (comma seperated):");
+      iret=scanf_s("%lf,%lf",&pc.x,&pc.y);
+      bHasGarbage=flushInputBuffer();
+      if (iret == 2){
+         if(bHasGarbage){
+            printf("Got x and y values (%.*lf, %.*lf) but y value contains trailing non-numerical characters\n",PRECISION,pc.x,PRECISION,pc.y);
+         } else {
+            printf("Got good x and y values (%.*lf, %.*lf). Thanks!!\n",PRECISION,pc.x,PRECISION,pc.y);
+            break;
+         }
+      } else if (iret == 1) {
+         if(bHasGarbage){
+            printf("Only got x value (%.*lf)!\n",PRECISION,pc.x);
+            printf("x may have trailing garbage or y may have leading garbage or you forgot the comma.\n");
+         } else {
+            printf("to few arguments!\n");
+         }
+      } else {
+         printf("Didnt get any usable data. x values contains leading non-numerical characters\n");
+      }
+   }
+   while(true){
+      printf("Enter arc angles in degrees thetaStart,thetaEnd (comma seperated):");
+      iret=scanf_s("%lf,%lf",&thetaStartDeg,&thetaEndDeg);
+      bHasGarbage=flushInputBuffer();
+      if (iret == 2){
+         if(bHasGarbage){
+            printf("Got thetaStart and thetaEnd values (%.*lf, %.*lf) but y value contains trailing non-numerical characters\n",PRECISION,thetaStartDeg,PRECISION,thetaEndDeg);
+         } else {
+            printf("Got good thetaStart and thetaEnd values (%.*lf, %.*lf). Thanks!!\n",PRECISION,thetaStartDeg,PRECISION,thetaEndDeg);
+            break;
+         }
+      } else if (iret == 1) {
+         if(bHasGarbage){
+            printf("Only got thetaStart value (%.*lf)!\n",PRECISION,thetaStartDeg);
+            printf("thetaStart may have trailing garbage or thetaEnd may have leading garbage or you forgot the comma.\n");
+         } else {
+            printf("to few arguments!\n");
+         }
+      } else {
+         printf("Didnt get any usable data. thetaStart values contains leading non-numerical characters\n");
+      }
+   }
+   while(true)
+   {
+      printf("Enter the radius of the arc, r: ");
+      scanf_s("%lf",&r);
+      bHasGarbage = flushInputBuffer();
+      if (bHasGarbage == 0)
+      {
+         printf("Got good value: NP = %*lf.\n",PRECISION,r);
+         break;
+      } else {
+         printf("Invalid input. Please try again. \n");
+      }
+   }
+   NP = getNumPoints;
+}
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  Asks the user for the points need to make a quadratic bezier
+// ARGUMENTS:    none
+// RETURN VALUE: QUADRATIC_BEZIER_DATA
+QUADRATIC_BEZIER_DATA getQuadraticBezierData(){
+   QUADRATIC_BEZIER_DATA QUADRATIC_BEZIER_DATA;
+   int iret, bHasGarbage, NP;
+   POINT2D pA,pB,pC;
+   while(true){
+      printf("Enter 3 control point coordinates xA,yA,xB,yB,xC,yC (comma seperated): ");
+      iret = scanf_s("%lf,%lf,%lf,%lf,%lf,%lf",&pA.x,&pA.y,&pB.x,&pB.y,&pC.x,&pC.y);
+      bHasGarbage = flushInputBuffer();
+      if (iret == 6){
+         printf("Got good end point values: xA, yA = [%.0lf,%.0lf] xB, yB = [%.0lf,%.0lf] and xC, yC =[%.0lf,%.0lf].\n",pA.x,pA.y,pB.x,pB.y,pC.x,pC.y);
+         break;
+      } else {
+         printf("Invalid input. Please try again. \n");
+      }
+   }
+   NP = getNumPoints();
+   return QUADRATIC_BEZIER_DATA;
+}
