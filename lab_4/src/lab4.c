@@ -52,9 +52,21 @@ void     printTableHeader(int tableWidth, const char *strTableTitle);// prints t
 int      getShapeChoice(void);                                       // gets the shape choice to draw from the user (LINE/ARC/BEZIER)
 void     rotateRobotJoints(JOINT_ANGLES ja);                         // send command to robot to rotate the joints
 void     drawShape(int shape);                                       // draw shape based on shape index
+int      inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol); // kinematics but inverse
 
 //----- MANDITORY FUNCTION PROTOTYPES -----
 int      getNumPoints();
+LINE_DATA getLineData();
+ARC_DATA getArcData();
+POINT2D  getTooltipPos(int shape, void *shapeData, double t);
+QUADRATIC_BEZIER_DATA getQuadraticBezierData();
+void drawArc();
+void drawLine();
+void drawQuadraticBezier();
+TRACE_ATTRIBUTES getTraceAttributes();
+void setPenPos(int penPos);
+void setPenColor(RGB color);
+void setMotorSpeed(int motor);
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  C program to draw various shapes with the SCARA robot
@@ -82,7 +94,145 @@ int main(void) {
 // ARGUMENTS:    shape: index of the shape to draw (LINE/ARC/BEZIER)
 // RETURN VALUE: none
 void drawShape(int shape) {
+   switch (shape)
+   {
+   case ARC:
+      drawArc();
+      break;
+   case LINE:
+      drawLine();
+      break;
+   case QUADRATIC_BEZIER:
+      drawQuadraticBezier();
+      break;
+   default:
+      printf("AMONG US");
+      break;
+   }
 }
+
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION:  draws a shape with a robot according to user specifications
+// ARGUMENTS:    shape: index of the shape to draw (LINE/ARC/BEZIER)
+// RETURN VALUE: none
+void draw(int shape, void *shapeData){
+   double t;
+   int i;
+   LINE_DATA *pLine = NULL;
+   ARC_DATA *pArc = NULL;
+   QUADRATIC_BEZIER_DATA *pQB = NULL;
+   INVERSE_SOLUTION sol;
+   POINT2D toolTipPos;
+   TRACE_ATTRIBUTES tabs;
+   char str[MAX_TITLE];
+   int reachState;
+
+   if (shape == LINE){
+      pLine = (LINE_DATA*) shapeData;
+      //creat table header
+      sprintf_s(str, sizeof(str), "LINE: PA = [%lg,%lg], PA = [%lg,%lg], NP = %d",(*pLine).pA.x,(*pLine).pA.y,(*pLine).pB.x,(*pLine).pB.y,(*pLine).NP);
+      printTableHeader(TABLE_WIDTH,str);
+      for(i=1;i<=(*pLine).NP;i++){
+         t = (i-1.0)/((*pLine).NP-1.0);
+         toolTipPos = getTooltipPos(shape, pLine, t);
+         //IK
+         reachState = inverseKinematics(toolTipPos,&sol);
+         //pring points
+         printPointData(i,(*pLine).NP,toolTipPos,sol,reachState);
+         if (i == (*pLine).NP){
+            printTableHBorder(BL,BR,TABLE_WIDTH);
+         } else {
+            printTableHBorder(CL,CR,TABLE_WIDTH);
+         }
+      }
+      //check if we can draw the line
+      if(sol.bLeftCanReach || sol.bRightCanReach){
+         //get colour
+         //get thinkness/mortor speed
+         tabs = getTraceAttributes();
+         //make the robot do the things
+         setMotorSpeed(tabs.motorSpeed);
+         setPenColor(tabs.penColor);
+         setPenPos(PEN_DOWN);
+         if(sol.bLeftCanReach == true){
+            rotateRobotJoints(sol.leftArm);
+         } else if (sol.bRightCanReach == true){
+            rotateRobotJoints(sol.rightArm);
+         }
+         setPenPos(PEN_UP);
+      }
+   }
+   if (shape == ARC){
+      pArc = (ARC_DATA*) shapeData;
+      //creat table header
+      sprintf_s(str, sizeof(str), "ARC: pC = [%lg,%lg], R = %lg, Start Angle = %lg%c, End Angle = %lg%c, NP = %d", (*pArc).pc.x,(*pArc).pc.y,(*pArc).r,(*pArc).thetaStartDeg,DEGREE_SYMBOL,(*pArc).thetaEndDeg,DEGREE_SYMBOL,(*pArc).NP);
+      printTableHeader(TABLE_WIDTH,str);
+      for(i=1;i<=(*pArc).NP;i++){
+         t = (i-1.0)/((*pArc).NP-1.0);
+         toolTipPos = getTooltipPos(shape, pArc, t);
+         //IK
+         reachState = inverseKinematics(toolTipPos,&sol);
+         //pring points
+         printPointData(i,(*pArc).NP,toolTipPos,sol,reachState);
+         if (i == (*pArc).NP){
+            printTableHBorder(BL,BR,TABLE_WIDTH);
+         } else {
+            printTableHBorder(CL,CR,TABLE_WIDTH);
+         }
+      }
+      //check if we can draw the line
+      if(sol.bLeftCanReach || sol.bRightCanReach){
+         //get colour
+         //get thinkness/mortor speed
+         tabs = getTraceAttributes();
+         //make the robot do the things
+         setMotorSpeed(tabs.motorSpeed);
+         setPenColor(tabs.penColor);
+         setPenPos(PEN_DOWN);
+         if(sol.bLeftCanReach == true){
+            rotateRobotJoints(sol.leftArm);
+         } else if (sol.bRightCanReach == true){
+            rotateRobotJoints(sol.rightArm);
+         }
+         setPenPos(PEN_UP);
+      }
+   }
+   if (shape == QUADRATIC_BEZIER){
+      pQB = (QUADRATIC_BEZIER_DATA*) shapeData;
+      //creat table header
+      sprintf_s(str, sizeof(str), "QUADRATIC BEZIER: pA = [%lg,%lg], pB = [%lg,%lg], pC = [%lg,%lg], NP = %d", (*pQB).pA.x,(*pQB).pA.y,(*pQB).pB.x,(*pQB).pB.y,(*pQB).pC.x,(*pQB).pC.y,(*pQB).NP);
+      printTableHeader(TABLE_WIDTH,str);
+      for(i=1;i<=(*pQB).NP;i++){
+         t = (i-1.0)/((*pQB).NP-1.0);
+         toolTipPos = getTooltipPos(shape, pQB, t);
+         //IK
+         reachState = inverseKinematics(toolTipPos,&sol);
+         //pring points
+         printPointData(i,(*pQB).NP,toolTipPos,sol,reachState);
+         if (i == (*pQB).NP){
+            printTableHBorder(BL,BR,TABLE_WIDTH);
+         } else {
+            printTableHBorder(CL,CR,TABLE_WIDTH);
+         }
+      }
+      //check if we can draw the line
+      if(sol.bLeftCanReach || sol.bRightCanReach){
+         //get colour
+         //get thinkness/mortor speed
+         tabs = getTraceAttributes();
+         //make the robot do the things
+         setMotorSpeed(tabs.motorSpeed);
+         setPenColor(tabs.penColor);
+         setPenPos(PEN_DOWN);
+         if(sol.bLeftCanReach == true){
+            rotateRobotJoints(sol.leftArm);
+         } else if (sol.bRightCanReach == true){
+            rotateRobotJoints(sol.rightArm);
+         }
+         setPenPos(PEN_UP);
+      }
+      }
+   }
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  Asks the user if they want to draw another line
@@ -98,6 +248,12 @@ bool doAgain(void) {
 //               strTableTitle:  title string
 // RETURN VALUE: none
 void printTableHeader(int tableWidth, const char *strTableTitle) {
+   int strL = (int)strlen(strTableTitle);
+   printTableHBorder(TL,TR,tableWidth);
+   printf("%c",VL);
+   printf("%*s",strL+((tableWidth-strL)/2)-1,strTableTitle);
+   printf("%*c \n",(tableWidth-strL)/2,VL);
+   printTableHBorder(CL,CR,tableWidth);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -109,6 +265,54 @@ void printTableHeader(int tableWidth, const char *strTableTitle) {
 //               reachState:  The combined reach state data (for contextual printing)
 // RETURN VALUE: none
 void printPointData(int iPt, int NP, POINT2D pos, INVERSE_SOLUTION isol, int reachState) {
+   int numChars;
+   double L = sqrt(((pos.x)*(pos.x))+((pos.y)*(pos.y)));
+   numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+   numChars+=printf("POINT %02d:",iPt);
+   numChars+=printf("   x = %+*.*lf,",FIELD_WIDTH,PRECISION,pos.x);
+   numChars+=printf("   y = %+*.*lf.",FIELD_WIDTH,PRECISION,pos.y);
+   numChars+=printf("   L = %+*.*lf",FIELD_WIDTH,PRECISION, L);
+   printf("%*c\n",TABLE_WIDTH-numChars,VL);
+
+   if((reachState & L_EXCEEDS_MAX) == L_EXCEEDS_MAX){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL_LEFT,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS OUTSIDE MAXIMUM REACH OF ROBOT (L_MAX = %.0lf) ",LMAX);
+      printRepeatedChar(ERROR_SYMBOL_RIGHT,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else if((reachState & L_EXCEEDS_MIN) == L_EXCEEDS_MIN){
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      printRepeatedChar(ERROR_SYMBOL_LEFT,NUM_ERROR_SYMBOLS);
+      numChars+=printf(" POINT IS INSIDE MINIMUM REACH OF ROBOT (L_MIN = %.0lf) ",LMIN);
+      printRepeatedChar(ERROR_SYMBOL_RIGHT,NUM_ERROR_SYMBOLS);
+      printf("%*c\n",TABLE_WIDTH-numChars-(2*NUM_ERROR_SYMBOLS),VL);
+   } else{
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("LEFT ARM:");
+      numChars+=printf("  %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,isol.leftArm.theta1Deg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,isol.leftArm.theta2Deg,DEGREE_SYMBOL);
+      if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)&&((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if(((reachState & THETA1L_EXCEEDS_MAX) == THETA1L_EXCEEDS_MAX)){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if(((reachState & THETA2L_EXCEEDS_MAX) == THETA2L_EXCEEDS_MAX)){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",TABLE_WIDTH-numChars,VL);
+
+      numChars=printf("%-*c",1+LEFT_MARGIN, VL);
+      numChars+=printf("RIGHT ARM:");
+      numChars+=printf(" %c1 = %+*.*lf%c,",THETA_SYMBOL,FIELD_WIDTH,PRECISION,isol.rightArm.theta1Deg,DEGREE_SYMBOL);
+      numChars+=printf(" %c2 = %+*.*lf%c.  ",THETA_SYMBOL,FIELD_WIDTH,PRECISION,isol.rightArm.theta2Deg,DEGREE_SYMBOL);
+      if(((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX)&&((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX)){
+         numChars+=printf("%c1 and %c2 exceeds max angle!",THETA_SYMBOL,THETA_SYMBOL);
+      } else if((reachState & THETA1R_EXCEEDS_MAX) == THETA1R_EXCEEDS_MAX){
+         numChars+=printf("%c1 exceeds max angle!",THETA_SYMBOL);
+      } else if((reachState & THETA2R_EXCEEDS_MAX) == THETA2R_EXCEEDS_MAX){
+         numChars+=printf("%c2 exceeds max angle!",THETA_SYMBOL);
+      }
+      printf("%*c\n",TABLE_WIDTH-numChars,VL);
+   }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -355,13 +559,19 @@ ARC_DATA getArcData(){
       bHasGarbage = flushInputBuffer();
       if (bHasGarbage == 0)
       {
-         printf("Got good value: NP = %*lf.\n",PRECISION,r);
+         printf("Got good value: R = %*lf.\n",PRECISION,r);
          break;
       } else {
          printf("Invalid input. Please try again. \n");
       }
    }
-   NP = getNumPoints;
+   NP = getNumPoints();
+   ARC_DATA.pc = pc;
+   ARC_DATA.thetaStartDeg = thetaStartDeg;
+   ARC_DATA.thetaEndDeg = thetaEndDeg;
+   ARC_DATA.r = r;
+   ARC_DATA.NP = NP;
+   return ARC_DATA;
 }
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  Asks the user for the points need to make a quadratic bezier
@@ -383,5 +593,220 @@ QUADRATIC_BEZIER_DATA getQuadraticBezierData(){
       }
    }
    NP = getNumPoints();
+   QUADRATIC_BEZIER_DATA.NP = NP;
+   QUADRATIC_BEZIER_DATA.pA = pA;
+   QUADRATIC_BEZIER_DATA.pB = pB;
+   QUADRATIC_BEZIER_DATA.pC = pC;
    return QUADRATIC_BEZIER_DATA;
 }
+
+TRACE_ATTRIBUTES getTraceAttributes(){
+   TRACE_ATTRIBUTES TRACE_ATTRIBUTES;
+   char colour;
+   char thickness;
+   int bHasGarbage;
+   TRACE_ATTRIBUTES.penColor = NO_COLOR;
+   TRACE_ATTRIBUTES.motorSpeed = 69;
+   //jet jolour
+   printf("Choose the letter corresponding to the colour you want:\n\n");
+   printf("   A=Aqua   B=Black   G=Green   H=HotPink   O=Orange\n");
+   printf("   R=Red    W=White   N=Navy    Y=Yellow    P=Purple\n\n");
+   while(true){
+      printf("Choice:");
+      scanf_s("%c", &colour);
+      bHasGarbage = flushInputBuffer();
+      if(bHasGarbage == 0){
+         colour = tolower(colour);
+         switch (colour)
+         {
+         case 'a':
+            TRACE_ATTRIBUTES.penColor = AQUA;
+            break;
+         case 'b':
+            TRACE_ATTRIBUTES.penColor = BLACK;
+            break;
+         case 'g':
+            TRACE_ATTRIBUTES.penColor = GREEN;
+            break;
+         case 'h':
+            TRACE_ATTRIBUTES.penColor = HOTPINK;
+            break;
+         case 'o':
+            TRACE_ATTRIBUTES.penColor = ORANGE;
+            break;
+         case 'r':
+            TRACE_ATTRIBUTES.penColor = RED;
+            break;
+         case 'w':
+            TRACE_ATTRIBUTES.penColor = WHITE;
+            break;
+         case 'n':
+            TRACE_ATTRIBUTES.penColor = NAVY;
+            break;
+         case 'y':
+            TRACE_ATTRIBUTES.penColor = YELLOW;
+            break;
+         case 'p':
+            TRACE_ATTRIBUTES.penColor = PURPLE;
+            break;
+         default:
+            printf("Invalid Input\n");
+            break;
+         }
+         if (TRACE_ATTRIBUTES.penColor.r != -1){
+            break;
+         }
+      } else {
+         printf("Please enter a single character (no leading/trailing spaces).\n");
+      }
+   }
+   // met mortor meed
+   while(true){
+      printf("Choose the line thickness [T = Thin, M = Medium, K = thicK]:");
+      scanf_s("%c", &thickness);
+      bHasGarbage = flushInputBuffer();
+      if(bHasGarbage == 0){
+         thickness = tolower(thickness);
+         switch (thickness)
+         {
+         case 't':
+            TRACE_ATTRIBUTES.motorSpeed = MOTOR_SPEED_HIGH;
+            break;
+         case 'm':
+            TRACE_ATTRIBUTES.motorSpeed = MOTOR_SPEED_MEDIUM;
+            break;
+         case 'k':
+            TRACE_ATTRIBUTES.motorSpeed = MOTOR_SPEED_LOW;
+            break;
+         default:
+            printf("Invalid Input\n");
+            break;
+         }
+         if(TRACE_ATTRIBUTES.motorSpeed != 69){
+            break;
+         }
+      } else {
+         printf("Please enter a single character (no leading/trailing spaces).\n");
+      }
+   }
+   return TRACE_ATTRIBUTES;
+}
+//-------------------------------------------------- Math Functions -----------------------------------------------------------
+POINT2D getTooltipPos(int shape, void *shapeData, double t){
+   LINE_DATA *pLine = NULL;
+   ARC_DATA *pArc = NULL;
+   QUADRATIC_BEZIER_DATA *pQB = NULL;
+   POINT2D toolTipPos;
+
+   if (shape == LINE){
+      pLine = (LINE_DATA*) shapeData;
+      toolTipPos.x = ((1-t)*(*pLine).pA.x) + (((*pLine).pB.x)*t);
+      toolTipPos.y = ((1-t)*(*pLine).pA.y) + (((*pLine).pB.y)*t);
+      return toolTipPos;
+   }
+   if (shape == ARC){
+      pArc = (ARC_DATA*) shapeData;
+      double thetai = (((*pArc).thetaStartDeg)*(1-t)) + (((*pArc).thetaEndDeg)*t);
+      toolTipPos.x = (*pArc).pc.x + ((*pArc).r * cos(thetai));
+      toolTipPos.y = (*pArc).pc.y + ((*pArc).r * cos(thetai));
+      return toolTipPos;
+   }
+   if (shape == QUADRATIC_BEZIER){
+      pQB = (QUADRATIC_BEZIER_DATA*) shapeData;
+      toolTipPos.x = (1-t)*(1-t)*(*pQB).pA.x + 2*(1-t)*t*(*pQB).pB.x + t*t*(*pQB).pC.x;
+      toolTipPos.y = (1-t)*(1-t)*(*pQB).pA.y + 2*(1-t)*t*(*pQB).pB.y + t*t*(*pQB).pC.y;
+      return toolTipPos;
+   }
+}
+
+int inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol){
+   int reachState = 0;
+   double L = sqrt(((toolTipPos.x)*(toolTipPos.x))+((toolTipPos.y)*(toolTipPos.y)));
+
+   if(L>LMAX){
+      reachState=(reachState | L_EXCEEDS_MAX);
+      (*sol).leftArm.theta1Deg = NAN;
+      (*sol).leftArm.theta2Deg = NAN;
+      (*sol).rightArm.theta1Deg = NAN;
+      (*sol).rightArm.theta2Deg = NAN;
+   } else if(L<LMIN){
+      reachState=(reachState | L_EXCEEDS_MIN);
+      (*sol).leftArm.theta1Deg = NAN;
+      (*sol).leftArm.theta2Deg = NAN;
+      (*sol).rightArm.theta1Deg = NAN;
+      (*sol).rightArm.theta2Deg = NAN;
+   }else{
+
+      double beta = atan2(toolTipPos.y,toolTipPos.x);
+      double alpha = acos(((L2*L2)-(L*L)-(L1*L1))/(-2*L*L1));
+
+      double theta1 = beta + alpha;
+      (*sol).leftArm.theta1Deg = mapAngle(theta1);
+      (*sol).leftArm.theta2Deg = mapAngle(atan2(toolTipPos.y-L1*sin(theta1),toolTipPos.x-L1*cos(theta1))-theta1);
+      (*sol).bLeftCanReach = true;
+      if(fabs((*sol).leftArm.theta1Deg)>ABS_THETA1_DEG_MAX){
+         reachState=(reachState | THETA1L_EXCEEDS_MAX);
+         (*sol).bLeftCanReach = false;
+      }
+      if(fabs((*sol).leftArm.theta2Deg)>ABS_THETA2_DEG_MAX){
+         reachState=(reachState | THETA2L_EXCEEDS_MAX);
+         (*sol).bLeftCanReach = false;
+      }
+
+      theta1 = beta - alpha;
+      (*sol).rightArm.theta1Deg = mapAngle(theta1);
+      (*sol).rightArm.theta2Deg = mapAngle(atan2(toolTipPos.y-L1*sin(theta1),toolTipPos.x-L1*cos(theta1))-theta1);
+      (*sol).bRightCanReach = true;
+      if(fabs((*sol).rightArm.theta1Deg)>ABS_THETA1_DEG_MAX){
+         reachState=(reachState | THETA1R_EXCEEDS_MAX);
+         (*sol).bRightCanReach = false;
+      }
+      if(fabs((*sol).rightArm.theta2Deg)>ABS_THETA2_DEG_MAX){
+         reachState=(reachState | THETA2R_EXCEEDS_MAX);
+         (*sol).bRightCanReach = false;
+      }
+   }
+   return reachState;
+}
+
+//-------------------------------------------------- Draw Functions -----------------------------------------------------------
+void drawArc(){
+   ARC_DATA data = getArcData();
+   draw(ARC, &data);
+}
+void drawLine(){
+   LINE_DATA data = getLineData();
+   draw(LINE,&data);
+}
+void drawQuadraticBezier(){
+   QUADRATIC_BEZIER_DATA data = getQuadraticBezierData();
+   draw(QUADRATIC_BEZIER,&data);
+}
+
+//-------------------------------------------------- Set Functions ------------------------------------------------------------
+void setPenPos(int penPos){
+   if (penPos = PEN_UP){
+      sendRobotCommand("PEN_UP\n");
+   }
+   if (penPos = PEN_DOWN){
+      sendRobotCommand("PEN_DOWN\n");
+   }
+}
+void setPenColor(RGB color){
+   char str[MAX_COMMAND];
+   sprintf_s(str,sizeof(str),"PEN_COLOR %d %d %d\n",color.r, color.g, color.b);
+   sendRobotCommand(str);
+}
+void setMotorSpeed(int motor){
+   if(motor == MOTOR_SPEED_HIGH){
+      sendRobotCommand("MOTOR_SPEED HIGH\n");
+   }
+   if(motor == MOTOR_SPEED_MEDIUM){
+      sendRobotCommand("MOTOR_SPEED MEDIUM\n");
+   }
+   if(motor == MOTOR_SPEED_LOW){
+      sendRobotCommand("MOTOR_SPEED LOW\n");
+   }
+}
+
+// :)
