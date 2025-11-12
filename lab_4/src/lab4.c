@@ -122,6 +122,8 @@ void draw(int shape, void *shapeData){
    ARC_DATA *pArc = NULL;
    QUADRATIC_BEZIER_DATA *pQB = NULL;
    INVERSE_SOLUTION sol;
+   sol.bRightCanReach = true;
+   sol.bLeftCanReach = true;
    POINT2D toolTipPos;
    TRACE_ATTRIBUTES tabs;
    char str[MAX_TITLE];
@@ -147,19 +149,29 @@ void draw(int shape, void *shapeData){
       }
       //check if we can draw the line
       if(sol.bLeftCanReach || sol.bRightCanReach){
-         //get colour
-         //get thinkness/mortor speed
+         //get colour/speed
          tabs = getTraceAttributes();
-         //make the robot do the things
+         //set colour/speed
          setMotorSpeed(tabs.motorSpeed);
          setPenColor(tabs.penColor);
-         setPenPos(PEN_DOWN);
-         if(sol.bLeftCanReach == true){
-            rotateRobotJoints(sol.leftArm);
-         } else if (sol.bRightCanReach == true){
-            rotateRobotJoints(sol.rightArm);
+         //move the bot
+         for(i=1;i<=(*pLine).NP;i++){
+            // Perform IK and get angles
+            t = (i-1.0)/((*pLine).NP-1.0);
+            toolTipPos = getTooltipPos(shape, pLine, t);
+            inverseKinematics(toolTipPos,&sol);
+            //Move the robot with pen up to the starting position
+            if(i==1){setPenPos(PEN_UP);}
+            //Check for valid moves
+            if(sol.bLeftCanReach == true){
+               rotateRobotJoints(sol.leftArm);
+            } else if (sol.bRightCanReach == true){
+               rotateRobotJoints(sol.rightArm);
+            }
+            if(i==1){setPenPos(PEN_DOWN);}
          }
-         setPenPos(PEN_UP);
+      } else {
+         printf("\n Cant draw given shape \n");
       }
    }
    if (shape == ARC){
@@ -182,19 +194,29 @@ void draw(int shape, void *shapeData){
       }
       //check if we can draw the line
       if(sol.bLeftCanReach || sol.bRightCanReach){
-         //get colour
-         //get thinkness/mortor speed
+         //get colour/speed
          tabs = getTraceAttributes();
-         //make the robot do the things
+         //set colour/speed
          setMotorSpeed(tabs.motorSpeed);
          setPenColor(tabs.penColor);
-         setPenPos(PEN_DOWN);
-         if(sol.bLeftCanReach == true){
-            rotateRobotJoints(sol.leftArm);
-         } else if (sol.bRightCanReach == true){
-            rotateRobotJoints(sol.rightArm);
+         //move the bot
+         for(i=1;i<=(*pArc).NP;i++){
+            // Perform IK and get angles
+            t = (i-1.0)/((*pArc).NP-1.0);
+            toolTipPos = getTooltipPos(shape, pArc, t);
+            inverseKinematics(toolTipPos,&sol);
+            //Move the robot with pen up to the starting position
+            if(i==1){setPenPos(PEN_UP);}
+            //Check for valid moves
+            if(sol.bLeftCanReach == true){
+               rotateRobotJoints(sol.leftArm);
+            } else if (sol.bRightCanReach == true){
+               rotateRobotJoints(sol.rightArm);
+            }
+            if(i==1){setPenPos(PEN_DOWN);}
          }
-         setPenPos(PEN_UP);
+      } else {
+         printf("\n Cant draw given shape \n");
       }
    }
    if (shape == QUADRATIC_BEZIER){
@@ -217,29 +239,59 @@ void draw(int shape, void *shapeData){
       }
       //check if we can draw the line
       if(sol.bLeftCanReach || sol.bRightCanReach){
-         //get colour
-         //get thinkness/mortor speed
+         //get colour/speed
          tabs = getTraceAttributes();
-         //make the robot do the things
+         //set colour/speed
          setMotorSpeed(tabs.motorSpeed);
          setPenColor(tabs.penColor);
-         setPenPos(PEN_DOWN);
-         if(sol.bLeftCanReach == true){
-            rotateRobotJoints(sol.leftArm);
-         } else if (sol.bRightCanReach == true){
-            rotateRobotJoints(sol.rightArm);
+         //move the bot
+         for(i=1;i<=(*pQB).NP;i++){
+            // Perform IK and get angles
+            t = (i-1.0)/((*pQB).NP-1.0);
+            toolTipPos = getTooltipPos(shape, pQB, t);
+            inverseKinematics(toolTipPos,&sol);
+            //Move the robot with pen up to the starting position
+            if(i==1){setPenPos(PEN_UP);}
+            //Check for valid moves
+            if(sol.bLeftCanReach == true){
+               rotateRobotJoints(sol.leftArm);
+            } else if (sol.bRightCanReach == true){
+               rotateRobotJoints(sol.rightArm);
+            }
+            if(i==1){setPenPos(PEN_DOWN);}
          }
-         setPenPos(PEN_UP);
-      }
+      } else {
+         printf("\n Cant draw given shape \n");
       }
    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  Asks the user if they want to draw another line
 // ARGUMENTS:    none
 // RETURN VALUE: true if they want to, false if not
 bool doAgain(void) {
-   return false;
+   bool doAgain = false;  // set to true if user wants to draw another line
+   char ch;
+   while (true)
+   {
+      printf("Do you want to draw another shape [y/n]? ");
+      scanf_s("%c", &ch, 1);
+      flushInputBuffer();
+      if (tolower(ch) == 'y')
+      {
+         doAgain = true;
+         break;
+      } else if(tolower(ch) == 'n'){
+         doAgain = false;
+         break;
+      } else {
+         printf("Invalid input please try again\n");
+      }
+   }
+
+
+   return doAgain;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -530,6 +582,19 @@ ARC_DATA getArcData(){
          printf("Didnt get any usable data. x values contains leading non-numerical characters\n");
       }
    }
+   while(true)
+   {
+      printf("Enter the radius of the arc, r: ");
+      scanf_s("%lf",&r);
+      bHasGarbage = flushInputBuffer();
+      if (bHasGarbage == 0)
+      {
+         printf("Got good value: R = %*lf.\n",PRECISION,r);
+         break;
+      } else {
+         printf("Invalid input. Please try again. \n");
+      }
+   }
    while(true){
       printf("Enter arc angles in degrees thetaStart,thetaEnd (comma seperated):");
       iret=scanf_s("%lf,%lf",&thetaStartDeg,&thetaEndDeg);
@@ -550,19 +615,6 @@ ARC_DATA getArcData(){
          }
       } else {
          printf("Didnt get any usable data. thetaStart values contains leading non-numerical characters\n");
-      }
-   }
-   while(true)
-   {
-      printf("Enter the radius of the arc, r: ");
-      scanf_s("%lf",&r);
-      bHasGarbage = flushInputBuffer();
-      if (bHasGarbage == 0)
-      {
-         printf("Got good value: R = %*lf.\n",PRECISION,r);
-         break;
-      } else {
-         printf("Invalid input. Please try again. \n");
       }
    }
    NP = getNumPoints();
@@ -707,8 +759,8 @@ POINT2D getTooltipPos(int shape, void *shapeData, double t){
    if (shape == ARC){
       pArc = (ARC_DATA*) shapeData;
       double thetai = (((*pArc).thetaStartDeg)*(1-t)) + (((*pArc).thetaEndDeg)*t);
-      toolTipPos.x = (*pArc).pc.x + ((*pArc).r * cos(thetai));
-      toolTipPos.y = (*pArc).pc.y + ((*pArc).r * cos(thetai));
+      toolTipPos.x = (*pArc).pc.x + ((*pArc).r * cos(degToRad(thetai)));
+      toolTipPos.y = (*pArc).pc.y + ((*pArc).r * sin(degToRad(thetai)));
       return toolTipPos;
    }
    if (shape == QUADRATIC_BEZIER){
@@ -729,12 +781,16 @@ int inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol){
       (*sol).leftArm.theta2Deg = NAN;
       (*sol).rightArm.theta1Deg = NAN;
       (*sol).rightArm.theta2Deg = NAN;
+      (*sol).bLeftCanReach = false;
+      (*sol).bRightCanReach = false;
    } else if(L<LMIN){
       reachState=(reachState | L_EXCEEDS_MIN);
       (*sol).leftArm.theta1Deg = NAN;
       (*sol).leftArm.theta2Deg = NAN;
       (*sol).rightArm.theta1Deg = NAN;
       (*sol).rightArm.theta2Deg = NAN;
+      (*sol).bLeftCanReach = false;
+      (*sol).bRightCanReach = false;
    }else{
 
       double beta = atan2(toolTipPos.y,toolTipPos.x);
@@ -743,7 +799,6 @@ int inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol){
       double theta1 = beta + alpha;
       (*sol).leftArm.theta1Deg = mapAngle(theta1);
       (*sol).leftArm.theta2Deg = mapAngle(atan2(toolTipPos.y-L1*sin(theta1),toolTipPos.x-L1*cos(theta1))-theta1);
-      (*sol).bLeftCanReach = true;
       if(fabs((*sol).leftArm.theta1Deg)>ABS_THETA1_DEG_MAX){
          reachState=(reachState | THETA1L_EXCEEDS_MAX);
          (*sol).bLeftCanReach = false;
@@ -756,7 +811,6 @@ int inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol){
       theta1 = beta - alpha;
       (*sol).rightArm.theta1Deg = mapAngle(theta1);
       (*sol).rightArm.theta2Deg = mapAngle(atan2(toolTipPos.y-L1*sin(theta1),toolTipPos.x-L1*cos(theta1))-theta1);
-      (*sol).bRightCanReach = true;
       if(fabs((*sol).rightArm.theta1Deg)>ABS_THETA1_DEG_MAX){
          reachState=(reachState | THETA1R_EXCEEDS_MAX);
          (*sol).bRightCanReach = false;
@@ -785,10 +839,10 @@ void drawQuadraticBezier(){
 
 //-------------------------------------------------- Set Functions ------------------------------------------------------------
 void setPenPos(int penPos){
-   if (penPos = PEN_UP){
+   if (penPos == PEN_UP){
       sendRobotCommand("PEN_UP\n");
    }
-   if (penPos = PEN_DOWN){
+   if (penPos == PEN_DOWN){
       sendRobotCommand("PEN_DOWN\n");
    }
 }
