@@ -40,6 +40,30 @@ void                    setPenPos(int pos);                             // sets 
 int                     getShapeChoice(void);                           // gets the shape choice to draw from the user (LINE/ARC/BEZIER)
 void                    drawShape(int shape);                           // draw shape based on shape index
 
+// prints joint angle and reachability data into table for a given [x,y] coordinate.
+void     printPointData(int iPt, int NP, POINT2D pos, INVERSE_SOLUTION isol, int reachState);
+int      getShapeChoice(void);                                       // gets the shape choice to draw from the user (LINE/ARC/BEZIER)
+void     drawShape(int shape);                                       // draw shape based on shape index
+int      inverseKinematics(POINT2D toolTipPos, INVERSE_SOLUTION *sol); // kinematics but inverse
 
+//----- MANDITORY FUNCTION PROTOTYPES -----
+size_t      getNumPoints();
+LINE_DATA getLineData();
+ARC_DATA getArcData();
+POINT2D  getTooltipPos(int shape, void *shapeData, double t);
+QUADRATIC_BEZIER_DATA getQuadraticBezierData();
+CUBIC_BEZIER_DATA getCubicBezierData();
+TRIANGLE_DATA getTriangleData();
+RECTANGLE_DATA getRectangleData();
+void drawArc();
+void drawLine();
+void drawQuadraticBezier();
+void drawCubicBezier();
+void drawTriangle();
+void drawRectangle();
+TRACE_ATTRIBUTES getTraceAttributes();
+void setPenPos(int penPos);
+void setPenColor(RGB color);
+void setMotorSpeed(int motor);
 
 #endif
